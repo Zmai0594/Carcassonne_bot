@@ -100,15 +100,13 @@ def handle_place_meeple(query: QueryPlaceTile, game: Game) -> MovePlaceMeeple | 
 
     assert tile is not None
 
-    tile_model = lastPlaced
-
     if structures:
         for edge, _ in structures.items():
             if game.state._get_claims(tile, edge):
                 continue
 
             else:
-                return game.move_place_meeple(query, tile_model, placed_on=edge)
+                return game.move_place_meeple(query, lastPlaced, placed_on=edge)
 
     return game.move_place_meeple_pass(query)
 
