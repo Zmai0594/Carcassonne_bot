@@ -11,6 +11,7 @@ from lib.interface.events.moves.typing import MoveType
 from lib.models.tile_model import TileModel
 from lib.interact.tile import Tile
 from src.helper.client_state import ClientSate
+from src.lib.interact.structure import StructureType
 
 
 # Eack key is the tileIndex (which one it is in your hand (so either 0, 1 or 2))
@@ -18,26 +19,41 @@ from src.helper.client_state import ClientSate
 validPlacements: dict[int, list[tuple[int, int]]] = {}
 lastPlaced: TileModel
 
+# key = structure and edge
+# value = position of tile that exists already with said key
+# use this to match our cards in hand
+connectableBoardEdges: dict[tuple[StructureType, str], tuple[int, int]] = {}
+
 def findValidPlacements(game: Game) -> None:
     cards = game.state.my_tiles
     grid = game.state.map._grid
-    height = len(grid)
+    height = len(grid) # number of rows
     width = len(grid[0]) if height > 0 else 0
 
-    for tileIndex, tile in enumerate(cards):
-        # (if card in validPlacements check) is outside the O(n^2) loop to save computation time
-        # NOTE !! CAN_PLACE_TILE_AT ONLY RETURNS BOOLEAN TRUE OR FALSE. IT ALSO ROTATES THE TILE TO THE CORRECT POSITION
-        # IF THERE ARE MULTIPLE VALID PLACEMENTS, IT IS SIMPLY THE FIRST ONE CHECKED, AND MAY NOT BE OPTIMAL
-        if tileIndex in validPlacements:
-            for x in range(height):
-                for y in range(width):
-                    if game.can_place_tile_at(tile, x, y):
-                        validPlacements[tileIndex].append((x, y))
-        else:
-            for x in range(height):
-                for y in range(width):
-                    if game.can_place_tile_at(tile, x, y):
-                        validPlacements[tileIndex] = [(x, y)]
+
+    for row in range(height):
+        for col in range(width):
+            tile = grid[row][col]
+            if tile is None:
+                # Find if empty square is a valid placement
+                for tileIndex, tile in enumerate(cards):
+                    # NOTE !! CAN_PLACE_TILE_AT ONLY RETURNS BOOLEAN TRUE OR FALSE. IT ALSO ROTATES THE TILE TO THE CORRECT POSITION
+                    # IF THERE ARE MULTIPLE VALID PLACEMENTS, IT IS SIMPLY THE FIRST ONE CHECKED, AND MAY NOT BE OPTIMAL
+                    if game.can_place_tile_at(tile, row, col):
+                        if tileIndex in validPlacements:
+                            validPlacements[tileIndex].append((row, col))
+                        else:
+                            validPlacements[tileIndex] = [(row, col)]
+            else:
+                # this grid location has a Tile
+                externalTiles: dict[str, "Tile | None"] = tile.get_external_tiles(grid)
+                for edge, externalTile in externalTiles.items():
+                    if externalTile is not None:
+                        continue
+                   
+                    # External tile does not exist, therefore "tile" is a border tile of the current board
+                    if tile.placed_pos:
+                        connectableBoardEdges[(tile.internal_edges[edge], edge)] = tile.placed_pos
 
 def main():
     # Each player should have a copy of game. The game includes a Connection for you, as well as a Client state.
