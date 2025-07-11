@@ -13,7 +13,7 @@ from lib.interact.tile import Tile
 from src.helper.client_state import ClientSate
 from collections import deque
 from src.lib.interact.structure import StructureType
-
+from lib.interact.tile import TileModifier
 
 # Eack key is the tileIndex (which one it is in your hand (so either 0, 1 or 2))
 # Each value in validPlacements is a tuple of the valid x and y position
@@ -121,8 +121,9 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
 def countIncompleteEdges(startTile: Tile, startEdge: str) -> int:
     MAXENEMYMEEPLE = 1
     seen = set()
-    structureType = startTile.internal_edges[startEdge]
+    desiredType = startTile.internal_edges[startEdge]
     q = deque([(startTile, startEdge)])
+    structureBridge = TileModifier.get_bridge_modifier(desiredType)
     
     #they had it, idk the use case. edge given is valid but not traversable?? e.g monastary
     if startEdge not in startTile.internal_edges.keys():
@@ -134,6 +135,20 @@ def countIncompleteEdges(startTile: Tile, startEdge: str) -> int:
             continue
 
         seen.add((tile, edge))
+
+        connectedInternalEdges = []
+        #need to check adjacent edges first to be able to connect to opposite edge and keep searching
+        #exception if they have a bridge to connect
+        for adjacent_edge in Tile.adjacent_edges(edge):
+            if tile.internal_edges[adjacent_edge] == desiredType:
+                connectedInternalEdges.append(adjacent_edge)
+
+            if (
+                not connectedInternalEdges
+                and structureBridge
+                and structureBridge in tile.modifiers
+            ):
+                pass
 
 
     return -1
