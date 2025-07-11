@@ -11,6 +11,7 @@ from lib.interface.events.moves.typing import MoveType
 from lib.models.tile_model import TileModel
 from lib.interact.tile import Tile
 from src.helper.client_state import ClientSate
+from collections import deque
 from src.lib.interact.structure import StructureType
 
 
@@ -117,8 +118,26 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
     #     query, tileToPlace._to_model(), tileIndex
     # )
 
-def countIncompleteEdges(startTile: Tile, ) -> int:
-    pass
+def countIncompleteEdges(startTile: Tile, startEdge: str) -> int:
+    MAXENEMYMEEPLE = 1
+    seen = set()
+    structureType = startTile.internal_edges[startEdge]
+    q = deque([(startTile, startEdge)])
+    
+    #they had it, idk the use case. edge given is valid but not traversable?? e.g monastary
+    if startEdge not in startTile.internal_edges.keys():
+        return -1
+    
+    while q:
+        tile, edge = q.popleft()
+        if (tile, edge) in seen:
+            continue
+
+        seen.add((tile, edge))
+
+
+    return -1
+
 
 def handle_place_meeple(query: QueryPlaceTile, game: Game) -> MovePlaceMeeple | MovePlaceMeeplePass:
     # Do something
