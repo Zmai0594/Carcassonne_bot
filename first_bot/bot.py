@@ -80,6 +80,7 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
     # for now, take first valid move from validPlacements
 
     #Donalds hello world!!!
+    grid = game.state.map._grid
     hand = game.state.my_tiles
 
     firstTileIndex = next(iter(validPlacements))
@@ -91,9 +92,34 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
     global lastPlaced
     lastPlaced = firstTile._to_model()
 
-    connectableBoardEdges: dict[tuple[StructureType, edge], tuple[int, int]] = {} #DELETE WHEN COMPLETE
-    for type, edge, x, y in connectableBoardEdges:
-        incompleteEdges = countIncompleteEdges(game, game.state.map._grid[y][x], edge)
+    connectableBoardEdges: dict[tuple[StructureType, str], tuple[int, int]] = {} #DELETE WHEN COMPLETE
+    for (type, edge), (x, y) in connectableBoardEdges.items():
+        startTile = game.state.map._grid[y][x]
+
+        if not startTile:
+            continue
+
+        # First complete anything with just 1 incomplete edge
+        incompleteEdges = countIncompleteEdges(game, startTile, edge)
+        if incompleteEdges == 1:
+            # Position that we would place the tile
+            emptySquarePos: tuple[int, int] | None = None
+            match edge:
+                case "left_edge":
+                    emptySquarePos = (y, x - 1)
+                case "right_edge":
+                    emptySquarePos = (y, x + 1)
+                case "top_edge":
+                    emptySquarePos = (y - 1, x)
+                case "bottom_edge":
+                    emptySquarePos = (y + 1, x)
+
+            if emptySquarePos:
+                for i, card in enumerate(hand):
+                    if game.can_place_tile_at(card, emptySquarePos[0], emptySquarePos[1]):
+                        return game.move_place_tile(query, card._to_model(), i)
+        
+    # Then fill in priority below
 
     return game.move_place_tile(query, firstTile._to_model(), firstTileIndex)
 
