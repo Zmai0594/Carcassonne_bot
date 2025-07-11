@@ -14,7 +14,7 @@ from lib.interact.tile import TileModifier
 from src.helper.client_state import ClientSate
 from collections import deque
 from src.lib.interact.structure import StructureType
-
+from lib.interact.tile import TileModifier
 
 # Eack key is the tileIndex (which one it is in your hand (so either 0, 1 or 2))
 # Each value in validPlacements is a tuple of the valid x and y position
@@ -93,7 +93,7 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
 
     connectableBoardEdges: dict[tuple[StructureType, edge], tuple[int, int]] = {} #DELETE WHEN COMPLETE
     for type, edge, x, y in connectableBoardEdges:
-        incompleteEdges = countIncompleteEdges(game.state.map._grid[y][x])
+        incompleteEdges = countIncompleteEdges(game, game.state.map._grid[y][x], edge)
 
     return game.move_place_tile(query, firstTile._to_model(), firstTileIndex)
 
@@ -119,11 +119,16 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
     #     query, tileToPlace._to_model(), tileIndex
     # )
 
-def countIncompleteEdges(startTile: Tile, startEdge: str) -> int:
+def countIncompleteEdges(game:Game, startTile: Tile, startEdge: str, maxIncompleteEdges:int = 1) -> int:
+    '''
+    is this how descriptions are made
+    '''
     MAXENEMYMEEPLE = 1
+    incompleteEdges = 0
     seen = set()
-    structureType = startTile.internal_edges[startEdge]
+    desiredType = startTile.internal_edges[startEdge]
     q = deque([(startTile, startEdge)])
+    structureBridge = TileModifier.get_bridge_modifier(desiredType)
     
     #they had it, idk the use case. edge given is valid but not traversable?? e.g monastary
     if startEdge not in startTile.internal_edges.keys():
@@ -135,9 +140,41 @@ def countIncompleteEdges(startTile: Tile, startEdge: str) -> int:
             continue
 
         seen.add((tile, edge))
+        
+
+        connectedInternalEdges = []
+        #need to check adjacent edges first to be able to connect to opposite edge and keep searching
+        for adjacent_edge in Tile.adjacent_edges(edge):
+            if tile.internal_edges[adjacent_edge] == desiredType:
+                connectedInternalEdges.append(adjacent_edge)
+
+                if 
+
+        #no adjacent edges found but bridge exists so can do opposite side
+        if (
+            not connectedInternalEdges
+            and structureBridge
+            and structureBridge in tile.modifiers
+            and tile.internal_edges[tile.get_opposite(edge)] == desiredType
+        ):
+            connectedInternalEdges.append(tile.get_opposite(edge))
+        
+
+        for connectionEdge in connectedInternalEdges:
+            neighbourTile = tile.get_external_tile(connectionEdge, tile.placed_pos, game.state.map._grid)
+            
+            if not neighbourTile: #if edge connected to void
+                incompleteEdges += 1
+                if incompleteEdges >=
+            elif neighbourTile: 
+                #if edge connected to existing edge
+                pass
 
 
-    return -1
+            
+
+
+    return incompleteEdges
 
 
 def handle_place_meeple(query: QueryPlaceTile, game: Game) -> MovePlaceMeeple | MovePlaceMeeplePass:
