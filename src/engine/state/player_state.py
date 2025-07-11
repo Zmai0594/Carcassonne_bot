@@ -34,14 +34,3 @@ class PlayerState:
             tiles=[tile._to_model() for tile in self.tiles],
             num_meeples=len([m for m in self.meeples if m.placed is not None]),
         )
-
-    def _get_available_tile_type_from_hand(self, tile_type: str, pop: bool) -> Tile:
-        for i, tile in enumerate(self.tiles):
-            if tile.tile_type == tile_type:
-                if pop:
-                    self.tiles.pop(i)
-
-                return tile
-
-        assert False
-

@@ -74,7 +74,7 @@ class MoveValidator:
                 f"You tried placing a tile not in your hand - Tile Type Not in Hand {e.tile.tile_type}"
             )
 
-        tile = self.state.players[player_id]._get_available_tile_type_from_hand(e.tile.tile_type, pop=False)
+        tile = self.state.players[player_id].tiles[e.player_tile_index]
         tile = deepcopy(tile)
         tile.rotate_clockwise(e.tile.rotation)
 

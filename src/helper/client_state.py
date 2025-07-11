@@ -69,12 +69,3 @@ class ClientSate(GameLogic):
         # EP farm expansion
 
         return placable_structures
-
-    def get_my_tile_by_type(self, tile_type: str, pop: bool) -> Tile:
-        for tile in self.my_tiles:
-            if tile.tile_type == tile_type:
-                if pop:
-                    self.my_tiles.remove(tile)
-                return tile
-
-        RuntimeError(f"No tile of type {tile_type} in hand")
