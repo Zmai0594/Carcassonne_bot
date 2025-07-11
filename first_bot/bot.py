@@ -16,15 +16,10 @@ from src.helper.client_state import ClientSate
 # Eack key is the tileIndex (which one it is in your hand (so either 0, 1 or 2))
 # Each value in validPlacements is a tuple of the valid x and y position
 validPlacements: dict[int, list[tuple[int, int]]] = {}
+lastPlaced: TileModel
 
-def main():
-    # Each player should have a copy of game. The game includes a Connection for you, as well as a Client state.
-    game = Game()
-    botState = game.state
-    
-    lastPlaced = None
-    
-    cards = botState.my_tiles
+def findValidPlacements(game: Game) -> None:
+    cards = game.state.my_tiles
     grid = game.state.map._grid
     height = len(grid)
     width = len(grid[0]) if height > 0 else 0
@@ -44,8 +39,14 @@ def main():
                     if game.can_place_tile_at(tile, x, y):
                         validPlacements[tileIndex] = [(x, y)]
 
+def main():
+    # Each player should have a copy of game. The game includes a Connection for you, as well as a Client state.
+    game = Game()
+
     while True:
         query = game.get_next_query()
+
+        findValidPlacements(game)
 
         def choose_move(query: QueryType) -> MoveType:
             match query:
@@ -53,7 +54,7 @@ def main():
                     return handle_place_tile(q, game)
 
                 case QueryPlaceMeeple() as q:
-                    return handle_place_meeple(game)
+                    return handle_place_meeple(q, game)
 
         game.send_move(choose_move(query))
 
@@ -66,6 +67,11 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
     firstTile = hand[firstTileIndex]
     firstCoords = validPlacements[firstTileIndex][0]
     firstTile.placed_pos = firstCoords
+
+    # Keep track of the last placed from OUR BOT ONLY
+    global lastPlaced
+    lastPlaced = firstTile._to_model()
+
     return game.move_place_tile(query, firstTile._to_model(), firstTileIndex)
 
 
@@ -84,6 +90,27 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
     # return game.move_place_tile(
     #     query, tileToPlace._to_model(), tileIndex
     # )
+
+def handle_place_meeple(query: QueryPlaceTile, game: Game) -> MovePlaceMeeple | MovePlaceMeeplePass:
+    # Do something
+    structures = game.state.get_placeable_structures(lastPlaced)
+    
+    x, y = lastPlaced.pos
+    tile = game.state.map._grid[y][x]
+
+    assert tile is not None
+
+    tile_model = lastPlaced
+
+    if structures:
+        for edge, _ in structures.items():
+            if game.state._get_claims(tile, edge):
+                continue
+
+            else:
+                return game.move_place_meeple(query, tile_model, placed_on=edge)
+
+    return game.move_place_meeple_pass(query)
 
 
 if __name__ == "__main__":
