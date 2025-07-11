@@ -1,0 +1,130 @@
+from typing import TYPE_CHECKING
+from engine.config.game_config import MAX_NUM_TILES_IN_HAND
+from lib.config.map_config import MONASTARY_IDENTIFIER, NUM_PLACEABLE_TILE_TYPES
+from lib.interface.events.moves.move_place_meeple import (
+    MovePlaceMeeple,
+    MovePlaceMeeplePass,
+)
+from lib.interface.events.moves.move_place_tile import MovePlaceTile
+from lib.interface.events.moves.typing import MoveType
+from lib.interface.queries.base_query import BaseQuery
+from lib.interact.tile import Tile
+
+import string
+
+VALID_PLACEABLE_TILE_TYPES = [f"R{i}" for i in range(1, NUM_PLACEABLE_TILE_TYPES + 1)]
+VALID_PLACEABLE_TILE_TYPES.extend(
+    string.ascii_uppercase[: string.ascii_uppercase.index("X") + 1]
+)
+
+VALID_ROTATIONS = [0, 1, 2, 3]
+VALID_MEEPLE_PLACEMENTS = Tile.get_starting_tile().internal_claims.keys()
+
+if TYPE_CHECKING:
+    from engine.state.game_state import GameState
+
+
+class MoveValidator:
+    def __init__(self, state: "GameState"):
+        self.state = state
+
+    def validate(self, event: MoveType, query: BaseQuery, player_id: int) -> None:
+        self._validate_move(event, query, player_id)
+
+        match event:
+            case MovePlaceTile() as e:
+                self._validate_place_tile(e, query, player_id)
+            case MovePlaceMeeple() as e:
+                self._validate_place_meeple(e, query, player_id)
+            case MovePlaceMeeplePass() as e:
+                self._validate_place_meeple_pass(e, query, player_id)
+
+    def _validate_move(self, e: MoveType, query: BaseQuery, player_id: int) -> None:
+        if not e.player_id == player_id:
+            raise ValueError(
+                "You set the move 'player_id' to a player_id other than your own."
+            )
+
+    def _validate_place_tile(
+        self, e: MovePlaceTile, query: BaseQuery, player_id: int
+    ) -> None:
+        x, y = e.tile.pos
+        tile: Tile
+
+        neighbouring_tiles = {
+            edge: Tile.get_external_tile(edge, (x, y), self.state.map._grid)
+            for edge in Tile.get_edges()
+        }
+
+        # Validate Tile Type
+        if e.tile.tile_type not in VALID_PLACEABLE_TILE_TYPES:
+            raise ValueError(
+                f"You tried placing an invalid tile type - Recieved TileType {e.tile.tile_type}"
+            )
+
+        if e.player_tile_index not in range(0, MAX_NUM_TILES_IN_HAND):
+            raise ValueError(
+                f"You tried placing a tile not in your hand - Incorrect Recieved Tile Index {e.player_tile_index}"
+            )
+
+        player = self.state.players[player_id]
+        if not any(tile.tile_type == e.tile.tile_type for tile in player.tiles):
+            raise ValueError(
+                f"You tried placing a tile not in your hand - Tile Type Not in Hand {e.tile.tile_type}"
+            )
+
+        else:
+            tile = [
+                tile for tile in player.tiles if tile.tile_type == e.tile.tile_type
+            ][0]
+
+        # Validate rotation
+        if e.tile.rotation not in VALID_ROTATIONS:
+            raise ValueError(
+                f"You tried placing with an invalid rotation - Recieved Tile Rotation {e.tile.rotation}"
+            )
+
+        # Validate Tile Pos
+        if not any(neighbouring_tiles.values()):
+            print(e)
+            raise ValueError(
+                f"You placed a tile in an empty space - no neighbours at {x, y}"
+            )
+
+        for edge, neighbour_tile in neighbouring_tiles.items():
+            if (
+                neighbour_tile
+                and neighbour_tile.internal_edges[Tile.get_opposite(edge)]
+                != tile.internal_edges[edge]
+            ):
+                raise ValueError(
+                    f"You placed a tile in an mismatched position - {edge} mismatch, your edge is {neighbour_tile.internal_edges[Tile.get_opposite(edge)]} != {tile.internal_edges[edge]}"
+                )
+
+    def _validate_place_meeple(
+        self, e: MovePlaceMeeple, query: BaseQuery, player_id: int
+    ) -> None:
+        assert self.state.tile_placed is not None
+        if self.state.tile_placed.placed_pos != e.tile.pos:
+            raise ValueError(f"You placed a meeple on an invalid tile - {e.tile.pos}")
+
+        player = self.state.players[player_id]
+        if player._get_available_meeple() is None:
+            raise ValueError("You placed a meeple - You don't have one availble")
+
+        if e.placed_on not in VALID_MEEPLE_PLACEMENTS:
+            raise ValueError(
+                f"You placed a meeple on a invalid structure - Your Strcuture {e.placed_on}"
+            )
+
+        if e.placed_on not in [MONASTARY_IDENTIFIER]:
+            if self.state._get_claims(self.state.tile_placed, e.placed_on):
+                raise ValueError(
+                    "You tried placing a meeple on an unclaimable Structure - \
+                    adjacent structure claimed by an opponent"
+                )
+
+    def _validate_place_meeple_pass(
+        self, e: MovePlaceMeeplePass, query: BaseQuery, player_id: int
+    ) -> None:
+        pass
