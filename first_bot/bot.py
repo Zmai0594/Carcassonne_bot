@@ -84,6 +84,7 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
     # for tileIndex in validPlacements:
     #     coords = validPlacements[tileIndex][0]
 
+    #haha cheeky edit
     # Logic to determine highest scoring placement
 
     # tileToPlace = hand[maxScoringIndex]
