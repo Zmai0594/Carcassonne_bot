@@ -3,7 +3,7 @@ from lib.interface.events.base_event import BaseEvent
 from typing import Literal
 
 
-class EventGameEndedPointLimitReaced(BaseEvent):
+class EventGameEndedPointLimitReached(BaseEvent):
     event_type: Literal["event_game_ended_point_limit_reached"] = (
         "event_game_ended_point_limit_reached"
     )

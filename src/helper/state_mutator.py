@@ -7,7 +7,7 @@ from lib.interface.events.event_player_won import EventPlayerWon
 from lib.interface.events.event_river_phase_completed import EventRiverPhaseCompleted
 from lib.interface.events.event_game_ended import (
     EventGameEndedCancelled,
-    EventGameEndedPointLimitReaced,
+    EventGameEndedPointLimitReached,
     EventGameEndedStaleMate,
 )
 from lib.interface.events.event_game_started import (
@@ -67,7 +67,7 @@ class StateMutator:
             case PublicEventPlayerDrewTiles() as e:
                 self._commit_opponent_drew_tiles(e)
 
-            case EventGameEndedPointLimitReaced() as e:
+            case EventGameEndedPointLimitReached() as e:
                 self._commit_event_game_ended_point_limit(e)
 
             case EventGameEndedStaleMate() as e:
@@ -149,6 +149,7 @@ class StateMutator:
         else:
             tile = self.state.map.get_tile_by_type(e.tile.tile_type, pop=True)
 
+        tile.placed_pos = x, y
         self.state.map._grid[y][x] = tile
         self.state.map.placed_tiles.add(tile)
 
@@ -169,7 +170,7 @@ class StateMutator:
         pass
 
     def _commit_event_game_ended_point_limit(
-        self, e: EventGameEndedPointLimitReaced
+        self, e: EventGameEndedPointLimitReached
     ) -> None:
         pass
 

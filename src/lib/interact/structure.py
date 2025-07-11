@@ -10,6 +10,8 @@ class StructureType(Enum):
     CITY = auto()
     GRASS = auto()
 
+    MONASTARY = auto()
+
     @staticmethod
     def get_points(structure_type: "StructureType"):
         return {

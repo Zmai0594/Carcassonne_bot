@@ -114,6 +114,20 @@ class Tile:
 
         assert False
 
+    @final
+    def get_external_tiles(
+        self, grid: list[list["Tile | None"]]
+    ) -> dict[str, "Tile | None"]:
+        tiles: dict[str, "Tile | None"] = {}
+        for edge in self.internal_edges:
+            if self.placed_pos:
+                tiles[edge] = (self.__class__.get_external_tile(edge, self.placed_pos, grid))
+
+            else:
+                tiles[edge] = None
+
+        return tiles
+
     @staticmethod
     def get_starting_tile() -> "Tile":
         if not Tile.starting_tile:
@@ -170,16 +184,6 @@ class Tile:
         )
 
         self.internal_claims[MONASTARY_IDENTIFIER] = None
-
-        self.external_edges = DotMap(
-            Tile.EdgeTuple(
-                left_edge=None,
-                right_edge=None,
-                top_edge=None,
-                bottom_edge=None,
-            )._asdict(),
-            _dynamic=False,
-        )
 
         self.rotation = 0
         self.modifiers = modifiers

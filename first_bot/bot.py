@@ -22,6 +22,7 @@ def main():
     game = Game()
     botState = game.state
     
+    lastPlaced = None
     
     cards = botState.my_tiles
     grid = game.state.map._grid

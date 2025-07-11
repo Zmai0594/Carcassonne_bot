@@ -1,3 +1,4 @@
+from copy import copy, deepcopy
 from typing import TYPE_CHECKING
 from engine.config.game_config import MAX_NUM_TILES_IN_HAND
 from lib.config.map_config import MONASTARY_IDENTIFIER, NUM_PLACEABLE_TILE_TYPES
@@ -73,10 +74,9 @@ class MoveValidator:
                 f"You tried placing a tile not in your hand - Tile Type Not in Hand {e.tile.tile_type}"
             )
 
-        else:
-            tile = [
-                tile for tile in player.tiles if tile.tile_type == e.tile.tile_type
-            ][0]
+        tile = self.state.players[player_id]._get_available_tile_type_from_hand(e.tile.tile_type, pop=False)
+        tile = deepcopy(tile)
+        tile.rotate_clockwise(e.tile.rotation)
 
         # Validate rotation
         if e.tile.rotation not in VALID_ROTATIONS:
@@ -86,12 +86,17 @@ class MoveValidator:
 
         # Validate Tile Pos
         if not any(neighbouring_tiles.values()):
-            print(e)
+            # for row in self.state.map._grid[80:91]:
+            #     print([col for col in row[80:91]])
+
             raise ValueError(
                 f"You placed a tile in an empty space - no neighbours at {x, y}"
             )
 
         for edge, neighbour_tile in neighbouring_tiles.items():
+            # for row in self.state.map._grid[80:91]:
+            #     print([col for col in row[80:91]])
+
             if (
                 neighbour_tile
                 and neighbour_tile.internal_edges[Tile.get_opposite(edge)]
@@ -107,6 +112,9 @@ class MoveValidator:
         assert self.state.tile_placed is not None
         if self.state.tile_placed.placed_pos != e.tile.pos:
             raise ValueError(f"You placed a meeple on an invalid tile - {e.tile.pos}")
+
+        if self.state.tile_placed.rotation != e.tile.rotation:
+            raise ValueError(f"You placed a meeple on a valid tile with an invalid/mismatched rotation - {e.tile.rotation}")
 
         player = self.state.players[player_id]
         if player._get_available_meeple() is None:

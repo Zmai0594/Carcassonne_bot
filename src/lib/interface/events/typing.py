@@ -1,7 +1,7 @@
 from pydantic import Field
 from lib.interface.events.event_game_ended import (
     EventGameEndedCancelled,
-    EventGameEndedPointLimitReaced,
+    EventGameEndedPointLimitReached,
     EventGameEndedStaleMate,
 )
 from lib.interface.events.event_tile_placed import (
@@ -36,7 +36,7 @@ DiscriminatedEvent: TypeAlias = Annotated[
         EventPlayerMeepleFreed,
         EventPlayerWon,
         EventGameEndedCancelled,
-        EventGameEndedPointLimitReaced,
+        EventGameEndedPointLimitReached,
         EventGameEndedStaleMate,
         EventStartingTilePlaced,
         PublicEventGameStarted,
@@ -57,7 +57,7 @@ EventType: TypeAlias = Union[
     EventPlayerMeepleFreed,
     EventPlayerWon,
     EventGameEndedCancelled,
-    EventGameEndedPointLimitReaced,
+    EventGameEndedPointLimitReached,
     EventGameEndedStaleMate,
     EventStartingTilePlaced,
     PublicEventGameStarted,

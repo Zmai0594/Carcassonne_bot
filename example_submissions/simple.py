@@ -2,6 +2,7 @@
 # This was produced with the assistance of GPT 4o
 
 from helper.game import Game
+from lib.interact.tile import Tile
 from lib.interface.events.moves.move_place_meeple import (
     MovePlaceMeeple,
     MovePlaceMeeplePass,
@@ -59,10 +60,10 @@ def handle_place_tile(
     for y in range(height):
         for x in range(width):
             if grid[y][x] is not None:
-                print(
-                    f"Checking if tile can be placed near tile - {grid[y][x]}, at {x, y}"
-                )
                 for tile_index, tile in enumerate(game.state.my_tiles):
+                    print(
+                        f"Checking if tile {tile.tile_type} can be placed near tile - {grid[y][x]}, at {x, y}"
+                    )
                     for direction in directions:
                         dx, dy = direction
                         x1, y1 = (x + dx, y + dy)
@@ -86,14 +87,25 @@ def handle_place_meeple(
 ) -> MovePlaceMeeple | MovePlaceMeeplePass:
     """Try to place a meeple on the tile just placed, or pass."""
     assert bot_state.last_tile is not None
-    structures = game.state.get_tile_structures(bot_state.last_tile)
+    structures = game.state.get_placeable_structures(bot_state.last_tile)
+    
+    x, y = bot_state.last_tile.pos
+    tile = game.state.map._grid[y][x]
+
+    assert tile is not None
+
+    tile_model = bot_state.last_tile
     bot_state.last_tile = None
+
     if structures:
-        return game.move_place_meeple(
-            query, bot_state.last_tile, placed_on=next(iter(structures))
-        )
-    else:
-        return game.move_place_meeple_pass(query)
+        for edge, _ in structures.items():
+            if game.state._get_claims(tile, edge):
+                continue
+
+            else:
+                return game.move_place_meeple(query, tile_model, placed_on=edge)
+
+    return game.move_place_meeple_pass(query)
 
 
 if __name__ == "__main__":
