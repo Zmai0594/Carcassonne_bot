@@ -61,6 +61,7 @@ def main():
 def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
     # for now, take first valid move from validPlacements
 
+    #Donalds hello world!!!
     hand = game.state.my_tiles
 
     firstTileIndex = next(iter(validPlacements))
