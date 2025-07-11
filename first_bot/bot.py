@@ -10,6 +10,7 @@ from lib.interface.queries.query_place_meeple import QueryPlaceMeeple
 from lib.interface.events.moves.typing import MoveType
 from lib.models.tile_model import TileModel
 from lib.interact.tile import Tile
+from lib.interact.tile import TileModifier
 from src.helper.client_state import ClientSate
 from collections import deque
 from src.lib.interact.structure import StructureType
