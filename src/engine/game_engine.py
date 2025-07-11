@@ -21,7 +21,9 @@ from engine.state.player_state import PlayerState
 from engine.state.state_mutator import StateMutator
 
 from lib.config.expansion import EXPANSION
+from lib.config.map_config import MAP_CENTER, TILE_EDGE_IDS, TILE_EXTERNAL_POS
 from lib.config.scoring import POINT_LIMIT
+from lib.interact.structure import StructureType
 from lib.interact.tile import Tile
 from lib.interface.events.event_game_ended import (
     EventGameEndedStaleMate,
@@ -61,7 +63,7 @@ class GameEngine:
         self.state.turn_order = turn_order
 
         while not self.state.is_game_over():
-            print(f"New round {self.state.round + 1}")
+            print(f"New round {self.state.round + 1}", flush=True)
 
             if self.state.round == -1:
                 self.mutator.commit(
@@ -75,6 +77,7 @@ class GameEngine:
                 )
 
                 self.state.start_river_phase()
+                self.state.map.place_river_start(MAP_CENTER)
                 self.mutator.commit(
                     EventStartingTilePlaced(
                         tile_placed=Tile.get_starting_tile()._to_model()
@@ -84,7 +87,29 @@ class GameEngine:
             if self.state.tiles_exhausted:
                 if self.state.round != -1:
                     self.state.start_base_phase()
-                    self.mutator.commit(EventRiverPhaseCompleted())
+                    tile = self.state.map.placed_tiles[-1]
+
+                    edge: str
+                    for e, s in tile.internal_edges.items():
+                        assert tile.placed_pos is not None
+
+                        if s == StructureType.RIVER and not Tile.get_external_tile(e, tile.placed_pos, self.state.map._grid):
+                            edge = e
+                            break
+
+                    else:
+                        assert False
+
+                    assert tile.placed_pos is not None
+                    x, y = tile.placed_pos
+
+                    river_end = Tile.get_river_end_tile()
+                    river_end.rotate_clockwise(TILE_EDGE_IDS[edge])
+                    river_end.placed_pos = TILE_EXTERNAL_POS[edge](x, y)
+
+                    self.state.map._grid[y][x] = river_end
+
+                    self.mutator.commit(EventRiverPhaseCompleted(end_tile=river_end._to_model()))
 
                     if EXPANSION:
                         self.state.extend_base_phase()

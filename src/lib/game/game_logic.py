@@ -23,8 +23,8 @@ class GameLogic(SharedGameState):
     def _get_claims(self, tile: "Tile", edge: str) -> list[int]:
         players: set[int] = set()
 
-        for connected_tile, _ in self._traverse_connected_component(tile, edge):
-            meeple = connected_tile.internal_claims[edge]
+        for connected_tile, e in self._traverse_connected_component(tile, edge):
+            meeple = connected_tile.internal_claims[e]
             if meeple is not None:
                 players.add(meeple.player_id)
 
@@ -108,7 +108,6 @@ class GameLogic(SharedGameState):
                     connected_internal_edges.append(Tile.get_opposite(edge))
 
             for cid in connected_internal_edges:
-                # neighbouring_tile = tile.external_edges[cid] TODO
                 assert tile.placed_pos is not None
                 neighbouring_tile = Tile.get_external_tile(
                     cid, tile.placed_pos, self.map._grid

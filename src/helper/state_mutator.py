@@ -1,3 +1,4 @@
+from collections import deque
 from helper.client_state import ClientSate
 
 from lib.interact.tile import Tile
@@ -26,7 +27,7 @@ from lib.interface.events.moves.move_place_meeple import (
     MovePlaceMeeple,
     MovePlaceMeeplePass,
 )
-from lib.interface.events.moves.move_place_tile import MovePlaceTile
+from lib.interface.events.moves.move_place_tile import MovePlaceTile, PublicMovePlaceTile
 from lib.interface.events.typing import EventType
 
 
@@ -57,6 +58,9 @@ class StateMutator:
 
             case MovePlaceTile() as e:
                 self._commit_move_place_tile(e)
+
+            case PublicMovePlaceTile() as e:
+                self._commit_public_move_place_tile(e)
 
             case MovePlaceMeeple() as e:
                 self._commit_move_place_meeple(e)
@@ -133,25 +137,28 @@ class StateMutator:
             self.state.me.num_meeples += 1
 
     def _commit_event_starting_tile_placed(self, e: EventStartingTilePlaced) -> None:
-        x, y = e.tile_placed.pos
-        Tile.get_starting_tile().placed_pos = (x, y)
-        self.state.map._grid[y][x] = Tile.get_starting_tile()
-        self.state.map.placed_tiles.add(Tile.get_starting_tile())
+        self.state.map.place_river_start(e.tile_placed.pos)
 
     def _commit_move_place_tile(self, e: MovePlaceTile) -> None:
+        if e.player_id != self.state.me.player_id:
+            pass
+
+        x, y = e.tile.pos
+        tile = self.state.my_tiles.pop(e.player_tile_index)
+        tile.placed_pos = x, y
+
+        self.state.map._grid[y][x] = tile
+        self.state.map.placed_tiles.append(tile)
+
+    def _commit_public_move_place_tile(self, e: PublicMovePlaceTile) -> None:
         self.state.players[e.player_id].num_tiles -= 1
 
         x, y = e.tile.pos
-        tile: Tile
-        if e.player_id == self.state.me.player_id:
-            tile = self.state.get_my_tile_by_type(e.tile.tile_type, pop=True)
-
-        else:
-            tile = self.state.map.get_tile_by_type(e.tile.tile_type, pop=True)
+        tile = self.state.map.get_tile_by_type(e.tile.tile_type, pop=True)
 
         tile.placed_pos = x, y
         self.state.map._grid[y][x] = tile
-        self.state.map.placed_tiles.add(tile)
+        self.state.map.placed_tiles.append(tile)
 
     def _commit_move_place_meeple(self, e: MovePlaceMeeple) -> None:
         self.state.players_meeples[e.player_id] -= 1
@@ -160,7 +167,6 @@ class StateMutator:
         tile = self.state.map._grid[y][x]
 
         assert tile is not None
-        # TODO need to create a serialiasbale meeple interface
         tile.internal_claims[e.placed_on] = None
 
         if e.player_id == self.state.me.player_id:
@@ -190,4 +196,5 @@ class StateMutator:
         pass
 
     def _commit_event_river_phase_completed(self, e: EventRiverPhaseCompleted) -> None:
+        self.state.map.place_river_end(e.end_tile.pos, e.end_tile.rotation)
         self.state.map.start_base_phase()

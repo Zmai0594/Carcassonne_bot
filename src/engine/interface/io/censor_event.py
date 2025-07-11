@@ -7,6 +7,7 @@ from lib.interface.events.event_game_started import (
     PublicEventGameStarted,
 )
 from lib.interface.events.event_player_drew_tiles import EventPlayerDrewTiles
+from lib.interface.events.moves.move_place_tile import MovePlaceTile
 from lib.interface.events.typing import EventType
 
 if TYPE_CHECKING:
@@ -19,6 +20,12 @@ class CensorEvent:
 
     def censor(self, event: EventType, player_id: int) -> EventType:
         match event:
+            case MovePlaceTile() as e:
+                if e.player_id == player_id:
+                    return e
+
+                return e.get_public()
+
             case EventPlayerDrewTiles() as e:
                 if e.player_id == player_id:
                     return e
