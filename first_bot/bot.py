@@ -152,6 +152,9 @@ def countIncompleteEdges(game:Game, startTile: Tile, startEdge: str) -> int:
     '''
     is this how descriptions are made
     '''
+    returnDict = {
+        
+    }
     MAXENEMYMEEPLE = 1
     enemyMeeples = 0
     incompleteEdges = 0
