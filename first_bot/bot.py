@@ -159,7 +159,11 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
     #     query, tileToPlace._to_model(), tileIndex
     # )
 
-def countIncompleteEdges(game:Game, startTile: Tile, startEdge: str, maxIncompleteEdges:int = 2) -> int:
+
+#CHECK FOR ROAD CROSS SECTION MODIFIER
+#QUESTION IF STRIAHGT LINE ROADS WORK
+#IF HAVE ADJACENT DO CHECK OPPOSITE
+def countIncompleteEdges(game:Game, startTile: Tile, startEdge: str) -> int:
     '''
     is this how descriptions are made
     '''
@@ -189,6 +193,10 @@ def countIncompleteEdges(game:Game, startTile: Tile, startEdge: str, maxIncomple
             if enemyMeeples >= MAXENEMYMEEPLE:
                 return -1
         
+        #check for broken/finished road which ends the path
+        if TileModifier.BROKEN_ROAD_CENTER in tile.modifiers:
+            continue
+
         connectedInternalEdges = []
         #need to check adjacent edges first to be able to connect to opposite edge and keep searching
         for adjacent_edge in Tile.adjacent_edges(edge):
@@ -202,21 +210,34 @@ def countIncompleteEdges(game:Game, startTile: Tile, startEdge: str, maxIncomple
                     if enemyMeeples >= MAXENEMYMEEPLE:
                         return -1
 
-        #no adjacent edges found but bridge exists so can do opposite side
+        #Any of the subconditions AND the opposite edge is desired type
         if (
+            
+            (   #roads can go opposite. Gap in road should have been adressed above
+                desiredType == StructureType.ROAD
+            )
+            or
+            ( #no adjacent edges found but bridge exists so can do opposite side
             not connectedInternalEdges
             and structureBridge
             and structureBridge in tile.modifiers
-            and tile.internal_edges[tile.get_opposite(edge)] == desiredType
+            )
+            or
+            (  # is a city with a adjacent edge so opposite is valid
+                desiredType == StructureType.CITY
+                and connectedInternalEdges
+            )
         ):
-            connectedInternalEdges.append(tile.get_opposite(edge))
+            #valid for posible opposite side, check if opposite side is valid
+            if tile.internal_edges[tile.get_opposite(edge)] == desiredType: 
+                connectedInternalEdges.append(tile.get_opposite(edge))
 
-            #enemy meeple check for valid oposite side on same structure
-            meeple = tile.internal_claims[adjacent_edge]
-            if meeple and meeple.player_id != game.state.me.player_id:
-                enemyMeeples += 1
-                if enemyMeeples >= MAXENEMYMEEPLE:
-                    return -1
+                #enemy meeple check for valid oposite side on same structure
+                meeple = tile.internal_claims[tile.get_opposite(edge)]
+                if meeple and meeple.player_id != game.state.me.player_id:
+                    enemyMeeples += 1
+                    if enemyMeeples >= MAXENEMYMEEPLE:
+                        return -1
         
 
         for connectionEdge in connectedInternalEdges:
@@ -225,8 +246,6 @@ def countIncompleteEdges(game:Game, startTile: Tile, startEdge: str, maxIncomple
             if not neighbourTile: 
                 #if edge connected to void
                 incompleteEdges += 1
-                if incompleteEdges >= maxIncompleteEdges:
-                    return -1
                 
             elif neighbourTile and (neighbourTile, neighbourTileEdge) not in seen: 
                 #if edge connected to valid edge and havent seen before
