@@ -33,7 +33,7 @@ class StateMutator:
     def __init__(self, state: GameState) -> None:
         self.state = state
 
-    def commit(self, event: EventType):
+    def commit(self, event: EventType) -> None:
         self.state.event_history.append(event)
 
         match event:
@@ -111,7 +111,9 @@ class StateMutator:
                     player.points += reward
 
                     if player.points >= POINT_LIMIT:
-                        self.commit(EventGameEndedPointLimitReached(player_id=player.id))
+                        self.commit(
+                            EventGameEndedPointLimitReached(player_id=player.id)
+                        )
 
             meeples_to_return = list(
                 self.state._traverse_connected_component(
