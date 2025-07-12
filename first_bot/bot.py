@@ -30,12 +30,12 @@ wantToClaim = False
 # use this to match our cards in hand
 connectableBoardEdges: dict[tuple[StructureType, str], tuple[int, int]] = {}
 
+
 def findValidPlacements(game: Game) -> None:
     cards = game.state.my_tiles
     grid = game.state.map._grid
     height = len(grid) # number of rows
     width = len(grid[0]) if height > 0 else 0
-
 
     for row in range(height):
         for col in range(width):
@@ -61,10 +61,9 @@ def findValidPlacements(game: Game) -> None:
                     if tile.placed_pos:
                         connectableBoardEdges[(tile.internal_edges[edge], edge)] = tile.placed_pos
 
-def main():
-    # Each player should have a copy of game. The game includes a Connection for you, as well as a Client state.
-    game = Game()
 
+def main():
+    game = Game()
     while True:
         query = game.get_next_query()
 
@@ -80,10 +79,10 @@ def main():
 
         game.send_move(choose_move(query))
 
+
 def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
 
     #Donalds hello world!!!
-    grid = game.state.map._grid
     hand = game.state.my_tiles
     # Keep track of the last placed from OUR BOT ONLYs
     global lastPlaced
@@ -92,20 +91,14 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
     global wantToClaim
     immediateClaim = False
     claimingEdge = ""
-    twoOrMoreMeeples = game.state.me.num_meeples > 1
     wantToClaim = False
-
-    firstTileIndex = next(iter(validPlacements))
-    firstTile = hand[firstTileIndex]
-    firstCoords = validPlacements[firstTileIndex][0]
-    firstTile.placed_pos = firstCoords
-
 
     optimalTile = None
     optimalPos = None
     placingEmblem = False
     extendingOurs = False
     emblemCards = []
+
     for card in hand:
         if TileModifier.EMBLEM in card.modifiers:
             emblemCards.append(card)
@@ -120,6 +113,7 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
         returnDict = countIncompleteEdges(game, startTile, edge)
         incompleteEdges = returnDict[dfsEnums.INCOMPLETEEDGES]
         claims: dict[int, int] = returnDict[dfsEnums.CLAIMS] # type: ignore
+        
         ours = game.state.me.player_id in claims
         unclaimed = len(claims) == 0
 
@@ -137,7 +131,6 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
 
         if emptySquarePos is None:
             continue
-
 
         for i, card in enumerate(hand):
             if game.can_place_tile_at(card, emptySquarePos[0], emptySquarePos[1]):
@@ -187,29 +180,12 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
         return game.move_place_tile(query, optimalTile._to_model(), hand.index(optimalTile))
     
     # Only returns here if there is no way to extend either our OWN or UNCLAIMED structures
+    firstTileIndex = next(iter(validPlacements))
+    firstTile = hand[firstTileIndex]
+    firstCoords = validPlacements[firstTileIndex][0]
+    firstTile.placed_pos = firstCoords
     return game.move_place_tile(query, firstTile._to_model(), firstTileIndex)
 
-
-    # Some basic iteration scaffold where we could calculate potential score
-
-    # maxScore = 0
-    # maxScoringIndex = 0
-    # maxScoringCoords = firstCoords
-    # for tileIndex in validPlacements:
-    #     coords = validPlacements[tileIndex][0]
-
-    #haha cheeky edit
-
-# My own edits -z
-    # Logic to determine highest scoring placement
-
-# Zhitian was here
-
-    # tileToPlace = hand[maxScoringIndex]
-    # tileToPlace.placed_pos = maxScoringCoords
-    # return game.move_place_tile(
-    #     query, tileToPlace._to_model(), tileIndex
-    # )
 
 
 class dfsEnums(Enum):
@@ -238,7 +214,6 @@ def countIncompleteEdges(game:Game, startTile: Tile, startEdge: str) -> dict[dfs
     structureBridge = TileModifier.get_bridge_modifier(desiredType)
     
     #they had it, idk the use case. edge given is valid but not traversable?? e.g monastary
-    # TODO change return type here
     if startEdge not in startTile.internal_edges.keys():
         return returnDict
     
@@ -341,6 +316,8 @@ def handle_place_meeple(query: QueryPlaceTile, game: Game) -> MovePlaceMeeple | 
     if wantToClaim:
         return game.move_place_meeple(query, lastPlaced, claimingEdge)
     
+
+    # TODO superflous?
     # if we have more than 1 meeple then place on first valid spot
     if structures:
         for edge, _ in structures.items():
