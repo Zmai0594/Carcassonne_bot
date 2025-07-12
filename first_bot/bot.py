@@ -15,6 +15,7 @@ from src.helper.client_state import ClientSate
 from collections import deque
 from src.lib.interact.structure import StructureType
 from lib.interact.tile import TileModifier
+from enum import Enum, auto
 
 # Eack key is the tileIndex (which one it is in your hand (so either 0, 1 or 2))
 # Each value in validPlacements is a tuple of the valid x and y position
@@ -160,6 +161,12 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
     # )
 
 
+class dfsEnums(Enum):
+    INCOMPLETEEDGES = auto()
+    CURRENTPOINTS = auto()
+    COMPLETEDPOINTS = auto()
+    CLAIMS = auto()
+
 #CHECK FOR ROAD CROSS SECTION MODIFIER
 #QUESTION IF STRIAHGT LINE ROADS WORK
 #IF HAVE ADJACENT DO CHECK OPPOSITE
@@ -168,11 +175,12 @@ def countIncompleteEdges(game:Game, startTile: Tile, startEdge: str) -> int:
     is this how descriptions are made
     '''
     returnDict = {
-        
+        dfsEnums.INCOMPLETEEDGES: 0,
+        dfsEnums.CURRENTPOINTS: 0,
+        dfsEnums.COMPLETEDPOINTS: 0,
+        dfsEnums.CLAIMS: {},
+
     }
-    MAXENEMYMEEPLE = 1
-    enemyMeeples = 0
-    incompleteEdges = 0
     seen = set()
     desiredType = startTile.internal_edges[startEdge]
     q = deque([(startTile, startEdge)])
@@ -191,11 +199,13 @@ def countIncompleteEdges(game:Game, startTile: Tile, startEdge: str) -> int:
         
         meeple = tile.internal_claims[edge]
         #enemy meeple check for incoming side
-        if meeple and meeple.player_id != game.state.me.player_id:
-            enemyMeeples += 1
-            if enemyMeeples >= MAXENEMYMEEPLE:
-                return -1
-        
+        if meeple:
+            claimsdict = returnDict[dfsEnums.CLAIMS]
+            if meeple.player_id not in claimsdict:
+                claimsdict[meeple.player_id] = 0
+            claimsdict[meeple.player_id] += 1
+            returnDict[dfsEnums.CLAIMS] = claimsdict
+
         #check for broken/finished road which ends the path
         if TileModifier.BROKEN_ROAD_CENTER in tile.modifiers:
             continue
@@ -208,10 +218,12 @@ def countIncompleteEdges(game:Game, startTile: Tile, startEdge: str) -> int:
 
                 #enemy meeple check for adjacent sides on same structure
                 meeple = tile.internal_claims[adjacent_edge]
-                if meeple and meeple.player_id != game.state.me.player_id:
-                    enemyMeeples += 1
-                    if enemyMeeples >= MAXENEMYMEEPLE:
-                        return -1
+                if meeple:
+                    claimsdict = returnDict[dfsEnums.CLAIMS]
+                    if meeple.player_id not in claimsdict:
+                        claimsdict[meeple.player_id] = 0
+                    claimsdict[meeple.player_id] += 1
+                    returnDict[dfsEnums.CLAIMS] = claimsdict
 
         #Any of the subconditions AND the opposite edge is desired type
         if (
@@ -237,10 +249,12 @@ def countIncompleteEdges(game:Game, startTile: Tile, startEdge: str) -> int:
 
                 #enemy meeple check for valid oposite side on same structure
                 meeple = tile.internal_claims[tile.get_opposite(edge)]
-                if meeple and meeple.player_id != game.state.me.player_id:
-                    enemyMeeples += 1
-                    if enemyMeeples >= MAXENEMYMEEPLE:
-                        return -1
+                if meeple:
+                    claimsdict = returnDict[dfsEnums.CLAIMS]
+                    if meeple.player_id not in claimsdict:
+                        claimsdict[meeple.player_id] = 0
+                    claimsdict[meeple.player_id] += 1
+                    returnDict[dfsEnums.CLAIMS] = claimsdict
         
 
         for connectionEdge in connectedInternalEdges:
@@ -248,14 +262,13 @@ def countIncompleteEdges(game:Game, startTile: Tile, startEdge: str) -> int:
             neighbourTileEdge = tile.get_opposite(connectionEdge)
             if not neighbourTile: 
                 #if edge connected to void
-                incompleteEdges += 1
+                returnDict[dfsEnums.INCOMPLETEEDGES] += 1
                 
             elif neighbourTile and (neighbourTile, neighbourTileEdge) not in seen: 
                 #if edge connected to valid edge and havent seen before
                 q.append((neighbourTile, neighbourTileEdge))
-                pass
 
-    return incompleteEdges
+    return returnDict
 
 
 def handle_place_meeple(query: QueryPlaceTile, game: Game) -> MovePlaceMeeple | MovePlaceMeeplePass:
