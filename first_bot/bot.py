@@ -21,6 +21,8 @@ from enum import Enum, auto
 # Each value in validPlacements is a tuple of the valid x and y position
 validPlacements: dict[int, list[tuple[int, int]]] = {}
 lastPlaced: TileModel
+immediateClaim = False
+immediateClaimEdge: str = ""
 
 # key = structure and edge
 # value = position of tile that exists already with said key
@@ -78,26 +80,30 @@ def main():
         game.send_move(choose_move(query))
 
 def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
-    # for now, take first valid move from validPlacements
 
     #Donalds hello world!!!
     grid = game.state.map._grid
     hand = game.state.my_tiles
+    # Keep track of the last placed from OUR BOT ONLYs
+    global lastPlaced
+    global immediateClaim
+    global immediateClaimEdge
+    immediateClaim = False
+    immediateClaimEdge = ""
 
     firstTileIndex = next(iter(validPlacements))
     firstTile = hand[firstTileIndex]
     firstCoords = validPlacements[firstTileIndex][0]
     firstTile.placed_pos = firstCoords
 
-    # Keep track of the last placed from OUR BOT ONLYs
-    global lastPlaced
-    lastPlaced = firstTile._to_model()
 
     optimalTile = None
+    optimalPos = None
+    placingEmblem = False
     emblemCards = []
-    for i, card in enumerate(hand):
+    for card in hand:
         if TileModifier.EMBLEM in card.modifiers:
-            emblemCards.append((i, card))
+            emblemCards.append(card)
 
     for (type, edge), (x, y) in connectableBoardEdges.items():
         startTile = game.state.map._grid[y][x]
@@ -111,31 +117,53 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
         if incompleteEdges == -1:
             continue
 
-        if incompleteEdges == 1:
-            # Position that we would place the tile
-            emptySquarePos: tuple[int, int] | None = None
-            match edge:
-                case "left_edge":
-                    emptySquarePos = (y, x - 1)
-                case "right_edge":
-                    emptySquarePos = (y, x + 1)
-                case "top_edge":
-                    emptySquarePos = (y - 1, x)
-                case "bottom_edge":
-                    emptySquarePos = (y + 1, x)
+        # Position that we would place the tile
+        emptySquarePos: tuple[int, int] | None = None
+        match edge:
+            case "left_edge":
+                emptySquarePos = (y, x - 1)
+            case "right_edge":
+                emptySquarePos = (y, x + 1)
+            case "top_edge":
+                emptySquarePos = (y - 1, x)
+            case "bottom_edge":
+                emptySquarePos = (y + 1, x)
 
-            if emptySquarePos:
-                for i, card in enumerate(hand):
-                    if game.can_place_tile_at(card, emptySquarePos[0], emptySquarePos[1]):
-                        card.placed_pos = emptySquarePos[0], emptySquarePos[1]
-                        lastPlaced = card._to_model()
-                        return game.move_place_tile(query, card._to_model(), i)
-        else:
-            optimalTile
+        if emptySquarePos is None:
+            continue
 
-        
-    # Then fill in priority below
 
+        for i, card in enumerate(hand):
+            if game.can_place_tile_at(card, emptySquarePos[0], emptySquarePos[1]):
+                # Immediately place the card if we can finish a structure 
+                if incompleteEdges == 1:
+                    card.placed_pos = emptySquarePos[0], emptySquarePos[1]
+                    lastPlaced = card._to_model()
+
+                    # Set immediate claim flag to place a meeple IF NOT ALREADY OWNED BY US 
+                    # TODO IF NOT CLAIMED BY US:
+                        # immediateClaim = True
+                        # immediateClaimEdge = Tile.get_opposite(edge)
+                    return game.move_place_tile(query, card._to_model(), i)
+                # Otherwise set priority to cards with emblems
+                elif card in emblemCards:
+                    optimalTile = card
+                    optimalPos = emptySquarePos[0], emptySquarePos[1]
+                    placingEmblem = True
+                elif not placingEmblem:
+                    # Check if the thing we extend is ours
+                    # if return value from incomplete edges call:
+                    optimalTile = card
+                    optimalPos = emptySquarePos[0], emptySquarePos[1]
+
+                    if game.state.me.num_meeples > 1:
+                        immediateClaim = True
+                        immediateClaimEdge = Tile.get_opposite(edge)
+
+    if optimalTile:
+        optimalTile.placed_pos = optimalPos
+        return game.move_place_tile(query, optimalTile._to_model(), hand.index(optimalTile))
+    
     return game.move_place_tile(query, firstTile._to_model(), firstTileIndex)
 
 
@@ -280,13 +308,20 @@ def handle_place_meeple(query: QueryPlaceTile, game: Game) -> MovePlaceMeeple | 
 
     assert tile is not None
 
+    if immediateClaim:
+        return game.move_place_meeple(query, lastPlaced, immediateClaimEdge)
+    
+    if game.state.me.num_meeples < 2:
+        return game.move_place_meeple_pass(query)
+    
+
+    # if we have more than 1 meeple then place on first valid spot
     if structures:
         for edge, _ in structures.items():
             if game.state._get_claims(tile, edge):
                 continue
 
-            else:
-                return game.move_place_meeple(query, lastPlaced, placed_on=edge)
+            return game.move_place_meeple(query, lastPlaced, placed_on=edge)
 
     return game.move_place_meeple_pass(query)
 
