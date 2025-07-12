@@ -155,6 +155,10 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
                     optimalTile = card
                     optimalPos = emptySquarePos[0], emptySquarePos[1]
 
+                    if game.state.me.num_meeples > 1:
+                        immediateClaim = True
+                        immediateClaimEdge = Tile.get_opposite(edge)
+
     if optimalTile:
         optimalTile.placed_pos = optimalPos
         return game.move_place_tile(query, optimalTile._to_model(), hand.index(optimalTile))
