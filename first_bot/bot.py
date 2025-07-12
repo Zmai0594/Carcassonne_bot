@@ -204,9 +204,9 @@ def countIncompleteEdges(game:Game, startTile: Tile, startEdge: str) -> int:
     '''
     returnDict = {
         dfsEnums.INCOMPLETEEDGES: 0,
-        dfsEnums.CURRENTPOINTS: 0,
-        dfsEnums.COMPLETEDPOINTS: 0,
-        dfsEnums.CLAIMS: {},
+        dfsEnums.CURRENTPOINTS: 0, # current points of the structure
+        dfsEnums.COMPLETEDPOINTS: 0, # points if structure is completed (should only be different for cities for now)
+        dfsEnums.CLAIMS: {}, #player_id: number of meeples on this structure
 
     }
     seen = set()
