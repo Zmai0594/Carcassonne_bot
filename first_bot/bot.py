@@ -22,7 +22,8 @@ from enum import Enum, auto
 validPlacements: dict[int, list[tuple[int, int]]] = {}
 lastPlaced: TileModel
 immediateClaim = False
-immediateClaimEdge: str = ""
+claimingEdge: str = ""
+wantToClaim = False
 
 # key = structure and edge
 # value = position of tile that exists already with said key
@@ -87,9 +88,12 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
     # Keep track of the last placed from OUR BOT ONLYs
     global lastPlaced
     global immediateClaim
-    global immediateClaimEdge
+    global claimingEdge
+    global wantToClaim
     immediateClaim = False
-    immediateClaimEdge = ""
+    claimingEdge = ""
+    twoOrMoreMeeples = game.state.me.num_meeples > 1
+    wantToClaim = False
 
     firstTileIndex = next(iter(validPlacements))
     firstTile = hand[firstTileIndex]
@@ -100,6 +104,7 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
     optimalTile = None
     optimalPos = None
     placingEmblem = False
+    extendingOurs = False
     emblemCards = []
     for card in hand:
         if TileModifier.EMBLEM in card.modifiers:
@@ -112,10 +117,11 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
             continue
 
         # First complete anything with just 1 incomplete edge
-        incompleteEdges = countIncompleteEdges(game, startTile, edge)
-
-        if incompleteEdges == -1:
-            continue
+        returnDict = countIncompleteEdges(game, startTile, edge)
+        incompleteEdges = returnDict[dfsEnums.INCOMPLETEEDGES]
+        claims: dict[int, int] = returnDict[dfsEnums.CLAIMS] # type: ignore
+        ours = game.state.me.player_id in claims
+        unclaimed = len(claims) == 0
 
         # Position that we would place the tile
         emptySquarePos: tuple[int, int] | None = None
@@ -135,35 +141,52 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
 
         for i, card in enumerate(hand):
             if game.can_place_tile_at(card, emptySquarePos[0], emptySquarePos[1]):
-                # Immediately place the card if we can finish a structure 
+                # Dont help others lmao
+                if not ours and not unclaimed:
+                    continue
+
+                # From here, everything is either already ours or unclaimed
+                # Immediately place the card if we can finish a structure THAT IS OURS OR UNCLAIMED
                 if incompleteEdges == 1:
                     card.placed_pos = emptySquarePos[0], emptySquarePos[1]
                     lastPlaced = card._to_model()
 
-                    # Set immediate claim flag to place a meeple IF NOT ALREADY OWNED BY US 
-                    # TODO IF NOT CLAIMED BY US:
-                        # immediateClaim = True
-                        # immediateClaimEdge = Tile.get_opposite(edge)
+                    # Set immediate claim flag to place a meeple
+                    if unclaimed:
+                        immediateClaim = True
+                        claimingEdge = Tile.get_opposite(edge)
                     return game.move_place_tile(query, card._to_model(), i)
-                # Otherwise set priority to cards with emblems
+
+                # Then set priority to extending our cities with emblems
                 elif card in emblemCards:
                     optimalTile = card
                     optimalPos = emptySquarePos[0], emptySquarePos[1]
                     placingEmblem = True
-                elif not placingEmblem:
-                    # Check if the thing we extend is ours
-                    # if return value from incomplete edges call:
-                    optimalTile = card
-                    optimalPos = emptySquarePos[0], emptySquarePos[1]
 
-                    if game.state.me.num_meeples > 1:
-                        immediateClaim = True
-                        immediateClaimEdge = Tile.get_opposite(edge)
+                    if unclaimed:
+                        wantToClaim = True
+                        claimingEdge = Tile.get_opposite(edge)
+
+                # If we arent placing an emblem then focus on extending anything we have
+                elif not placingEmblem:
+                    if ours:
+                        optimalTile = card
+                        optimalPos = emptySquarePos[0], emptySquarePos[1]
+                        extendingOurs = True
+                    elif not extendingOurs:
+                        optimalTile = card
+                        optimalPos = emptySquarePos[0], emptySquarePos[1]
+
+                        # If we havent already found a tile that is ours and the current structure is unclaimed
+                        wantToClaim = True
+                        claimingEdge = Tile.get_opposite(edge)
 
     if optimalTile:
         optimalTile.placed_pos = optimalPos
+        lastPlaced = optimalTile._to_model()
         return game.move_place_tile(query, optimalTile._to_model(), hand.index(optimalTile))
     
+    # Only returns here if there is no way to extend either our OWN or UNCLAIMED structures
     return game.move_place_tile(query, firstTile._to_model(), firstTileIndex)
 
 
@@ -198,7 +221,7 @@ class dfsEnums(Enum):
 #CHECK FOR ROAD CROSS SECTION MODIFIER
 #QUESTION IF STRIAHGT LINE ROADS WORK
 #IF HAVE ADJACENT DO CHECK OPPOSITE
-def countIncompleteEdges(game:Game, startTile: Tile, startEdge: str) -> int:
+def countIncompleteEdges(game:Game, startTile: Tile, startEdge: str) -> dict[dfsEnums, int | dict[int, int]]:
     '''
     is this how descriptions are made
     '''
@@ -215,8 +238,9 @@ def countIncompleteEdges(game:Game, startTile: Tile, startEdge: str) -> int:
     structureBridge = TileModifier.get_bridge_modifier(desiredType)
     
     #they had it, idk the use case. edge given is valid but not traversable?? e.g monastary
+    # TODO change return type here
     if startEdge not in startTile.internal_edges.keys():
-        return -1
+        return returnDict
     
     while q:
         tile, edge = q.popleft()
@@ -309,12 +333,14 @@ def handle_place_meeple(query: QueryPlaceTile, game: Game) -> MovePlaceMeeple | 
     assert tile is not None
 
     if immediateClaim:
-        return game.move_place_meeple(query, lastPlaced, immediateClaimEdge)
+        return game.move_place_meeple(query, lastPlaced, claimingEdge)
     
     if game.state.me.num_meeples < 2:
         return game.move_place_meeple_pass(query)
     
-
+    if wantToClaim:
+        return game.move_place_meeple(query, lastPlaced, claimingEdge)
+    
     # if we have more than 1 meeple then place on first valid spot
     if structures:
         for edge, _ in structures.items():
