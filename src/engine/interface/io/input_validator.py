@@ -53,6 +53,9 @@ class MoveValidator:
         x, y = e.tile.pos
         tile: Tile
 
+        # R3
+        print("Validator recieved tile type", e.tile.tile_type)
+
         neighbouring_tiles = {
             edge: Tile.get_external_tile(edge, (x, y), self.state.map._grid)
             for edge in Tile.get_edges()
@@ -76,6 +79,14 @@ class MoveValidator:
             )
 
         tile = self.state.players[player_id].tiles[e.player_tile_index]
+
+        print(self.state.players[player_id].tiles)
+
+        if tile.tile_type != e.tile.tile_type:
+            raise ValueError(
+                f"You tried placing a tile in your hand but the player tile index mismatched - Player tile index {e.player_tile_index}, Tile Type Given {tile.tile_type}"
+            )
+
         tile = deepcopy(tile)
         tile.rotate_clockwise(e.tile.rotation)
 

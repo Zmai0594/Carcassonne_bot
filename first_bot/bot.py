@@ -299,9 +299,6 @@ def countIncompleteEdges(game:Game, startTile: Tile, startEdge: str) -> dict[dfs
 
 
 def handle_place_meeple(query: QueryPlaceTile, game: Game) -> MovePlaceMeeple | MovePlaceMeeplePass:
-    # Do something
-    structures = game.state.get_placeable_structures(lastPlaced)
-    
     x, y = lastPlaced.pos
     tile = game.state.map._grid[y][x]
 
@@ -315,16 +312,7 @@ def handle_place_meeple(query: QueryPlaceTile, game: Game) -> MovePlaceMeeple | 
     
     if wantToClaim:
         return game.move_place_meeple(query, lastPlaced, claimingEdge)
-    
 
-    # TODO superflous?
-    # if we have more than 1 meeple then place on first valid spot
-    if structures:
-        for edge, _ in structures.items():
-            if game.state._get_claims(tile, edge):
-                continue
-
-            return game.move_place_meeple(query, lastPlaced, placed_on=edge)
 
     return game.move_place_meeple_pass(query)
 
