@@ -1,14 +1,8 @@
-import sys
-import os
-base_dir = os.path.dirname(__file__)
-src_path = os.path.abspath(os.path.join(base_dir, "..", "src"))
-sys.path.insert(0, src_path)
-
-from helper.game import Game
 from lib.interface.events.moves.move_place_meeple import (
     MovePlaceMeeple,
     MovePlaceMeeplePass,
 )
+from src.helper.helper.game import Game
 from lib.interface.events.moves.move_place_tile import MovePlaceTile
 from lib.interface.queries.typing import QueryType
 from lib.interface.queries.query_place_tile import QueryPlaceTile
@@ -17,9 +11,9 @@ from lib.interface.events.moves.typing import MoveType
 from lib.models.tile_model import TileModel
 from lib.interact.tile import Tile
 from lib.interact.tile import TileModifier
-from src.helper.client_state import ClientSate
+from src.helper.helper.client_state import ClientSate
 from collections import deque
-from src.lib.interact.structure import StructureType
+from src.lib.lib.interact.structure import StructureType
 from lib.interact.tile import TileModifier
 from enum import Enum, auto
 from lib.config.map_config import MAX_MAP_LENGTH, MAP_CENTER
@@ -73,9 +67,11 @@ def findValidPlacements(game: Game) -> None:
 
 def main():
     game = Game()
+    print("bot started")
     while True:
+        print("waiting for query")
         query = game.get_next_query()
-
+        print("got query", query)
         findValidPlacements(game)
 
         def choose_move(query: QueryType) -> MoveType:
@@ -381,6 +377,7 @@ def handle_place_meeple(query: QueryPlaceTile, game: Game) -> MovePlaceMeeple | 
 
     return game.move_place_meeple_pass(query)
 
+print("test bot.py loaded")
 
 if __name__ == "__main__":
     main()

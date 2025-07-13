@@ -56,9 +56,6 @@ class MoveValidator:
         # R3
         print("Validator recieved tile type", e.tile.tile_type)
 
-        # for row in self.state.map._grid[80:91]:
-        #     print([col for col in row[80:91]])
-
         neighbouring_tiles = {
             edge: Tile.get_external_tile(edge, (x, y), self.state.map._grid)
             for edge in Tile.get_edges()
@@ -82,8 +79,6 @@ class MoveValidator:
             )
 
         tile = self.state.players[player_id].tiles[e.player_tile_index]
-
-        # print(self.state.players[player_id].tiles)
 
         if tile.tile_type != e.tile.tile_type:
             raise ValueError(
@@ -109,10 +104,8 @@ class MoveValidator:
         # Validating each edge is alighed with a corrrect structure
         river_flag = False
         river_connections = 0
-        for edge, neighbour_tile in neighbouring_tiles.items():
-            # for row in self.state.map._grid[80:91]:
-            #     print([col for col in row[80:91]])
 
+        for edge, neighbour_tile in neighbouring_tiles.items():
             edge_structure = tile.internal_edges[edge]
 
             # Flag if there is an edge with a river on this tile.
@@ -151,11 +144,10 @@ class MoveValidator:
                 forecast_x = x + extension[0]
                 forecast_y = y + extension[1]
 
-                for i in range(4):
-                    coords = list(forcast_coordinates_one.values())[i]
+                for coords in forcast_coordinates_one.values():
                     checking_x = forecast_x + coords[0]
                     checking_y = forecast_y + coords[1]
-                    if checking_x != x and checking_y != y:
+                    if not (checking_x == x and checking_y == y):
                         if self.state.map._grid[checking_y][checking_x] is not None:
                             raise ValueError(
                                 "You placed a tile that will lead to a U-Turn in the river."
@@ -173,11 +165,14 @@ class MoveValidator:
                 # Look at the tile two tiles away from the direction the river is facing on our current tile
                 forecast_x = x + extension[0]
                 forecast_y = y + extension[1]
-                if self.state.map._grid[forecast_y][forecast_x] is not None:
-                    raise ValueError(
-                        "You placed a tile that will lead to a U-Turn in the river."
-                    )
+                for coords in forcast_coordinates_one.values():
+                    checking_x = forecast_x + coords[0]
+                    checking_y = forecast_y + coords[1]
 
+                    if self.state.map._grid[checking_y][checking_x] is not None:
+                        raise ValueError(
+                            "You placed a tile that will lead to a U-Turn in the river."
+                        )
         # Check if there is at least one river edge that is connected
         if river_flag and river_connections == 0:
             raise ValueError(
