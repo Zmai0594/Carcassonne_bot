@@ -1,3 +1,9 @@
+import sys
+import os
+base_dir = os.path.dirname(__file__)
+src_path = os.path.abspath(os.path.join(base_dir, "..", "src"))
+sys.path.insert(0, src_path)
+
 from helper.game import Game
 from lib.interface.events.moves.move_place_meeple import (
     MovePlaceMeeple,
