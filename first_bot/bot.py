@@ -79,6 +79,8 @@ def findValidPlacements(game: Game) -> None:
             elif (struct, edge) in connectableBoardEdges:
                 print("deleting", (struct, edge), "at", t.placed_pos)
                 connectableBoardEdges[(struct, edge)].discard(t.placed_pos)
+                if len(connectableBoardEdges[(struct, edge)]) == 0:
+                    del connectableBoardEdges[(struct, edge)]
         print("\n\n----------------")
         print(connectableBoardEdges)
         print("---------------\n\n")
@@ -221,7 +223,7 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
                         if numAdj >= 2:
                             card.rotate_clockwise(1) # flips otherway
                             # Either needs to flip once or twice
-                            if card.internal_edges[e] != StructureType.RIVER:
+                            if card.internal_edges[Tile.get_opposite(edge)] != StructureType.RIVER:
                                 card.rotate_clockwise(1)
                             print("flipped", card.tile_type, ", edges are now:", card.internal_edges)
                             #TODO: check if this is actually a valid placement if not then panic cuz should always be valid after rotation if initial invalid
