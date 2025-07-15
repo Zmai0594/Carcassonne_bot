@@ -224,7 +224,7 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
                             card.rotate_clockwise(1) # flips otherway
                             # Either needs to flip once or twice
                             if card.internal_edges[Tile.get_opposite(edge)] != StructureType.RIVER:
-                                card.rotate_clockwise(1)
+                                card.rotate_clockwise(2)
                             print("flipped", card.tile_type, ", edges are now:", card.internal_edges)
                             #TODO: check if this is actually a valid placement if not then panic cuz should always be valid after rotation if initial invalid
 
