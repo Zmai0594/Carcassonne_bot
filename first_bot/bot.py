@@ -95,6 +95,7 @@ def main():
         query = game.get_next_query()
         print("got query", query)
         findValidPlacements(game)
+        print("hereeee")
 
         def choose_move(query: QueryType) -> MoveType:
             match query:
@@ -126,13 +127,16 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
     extendingOurs = False
     emblemCards = []
 
+    
     latest_tile = game.state.map.placed_tiles[-1]
     latest_pos = latest_tile.placed_pos
 
+    print(len(hand), flush=True)
     for card in hand:
         if TileModifier.EMBLEM in card.modifiers:
             emblemCards.append(card)
         
+        print("boop", card.modifiers, card.tile_type)
         for edge in card.get_edges():
             if card.internal_edges[edge] == StructureType.RIVER:
                 riverTurn = True
@@ -140,9 +144,19 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
                 for e in latest_tile.get_edges():
                     if latest_tile.internal_edges[e] == StructureType.RIVER:
                         print("latest tile at", latest_pos, "has river at", e, ":", latest_tile.tile_type)
+    
+    print()
+    print("latest tile edges:")
+    for e in latest_tile.get_edges():
+        print(e, latest_tile.internal_edges[e])
+    print()
 
-    for (type, edge), position in connectableBoardEdges.items():
-        for x, y in position:
+            
+    for (structType, edge), positions in connectableBoardEdges.items():
+        for (x, y) in positions:
+            if riverTurn and structType != StructureType.RIVER:
+                continue
+
             startTile = game.state.map._grid[y][x]
 
             if not startTile:
@@ -171,6 +185,7 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
             if emptySquarePos is None:
                 continue
 
+            print("currently examining:", edge, "at position", x, y, flush=True)
             for i, card in enumerate(hand):
                 if game.can_place_tile_at(card, emptySquarePos[1], emptySquarePos[0]):
                     # Dont help others lmao
@@ -178,7 +193,7 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
                         continue
 
                     if riverTurn:
-
+                        print("its a riverrrr")
                         nextEmptySquarePos: tuple[int, int] | None = None
                         nextEdge = None
                         currentEdge = Tile.get_opposite(edge)
@@ -203,6 +218,7 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
                         #if 3 or more immediate neighbours then has to be immediate u turn so illegal, swap directions and hope
                         if countSurroundingTiles(game, nextEmptySquarePos[1], nextEmptySquarePos[0]) >= 3:
                             card.rotate_clockwise(2) # flips otherway
+                            print("flipped", card.tile_type, ", edges are now:", card.internal_edges)
                             #TODO: check if this is actually a valid placement if not then panic cuz should always be valid after rotation if initial invalid
 
                         #should only ever have one river tile card in hand so can just return?
@@ -210,7 +226,8 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
                         lastPlaced = card._to_model()
 
                         #TODO immediate claim meeple logic??
-                        
+                        print("placing tile", card.tile_type, "at", edge, "at position:", emptySquarePos[1], emptySquarePos[0], "with rotation", card.rotation, flush=True)
+                        print()
                         return game.move_place_tile(query, card._to_model(), i)
                             
 
@@ -251,6 +268,7 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
                             wantToClaim = True
                             claimingEdge = Tile.get_opposite(edge)
 
+    print("placing tile here", optimalTile)
     if optimalTile:
         optimalTile.placed_pos = optimalPos
         lastPlaced = optimalTile._to_model()
