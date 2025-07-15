@@ -31,7 +31,7 @@ wantToClaim = False
 # key = structure and edge
 # value = position of tile that exists already with said key
 # use this to match our cards in hand
-connectableBoardEdges: dict[tuple[StructureType, str], tuple[int, int]] = {}
+connectableBoardEdges: dict[tuple[StructureType, str], set[tuple[int, int]]] = {}
 
 
 def findValidPlacements(game: Game) -> None:
@@ -72,11 +72,16 @@ def findValidPlacements(game: Game) -> None:
     for t in need_to_check:
         for edge, struct in t.internal_edges.items():
             if t.get_external_tile(edge, t.placed_pos, grid) is None:
-                connectableBoardEdges[(struct, edge)] = t.placed_pos
+                if (struct, edge) not in connectableBoardEdges:
+                    connectableBoardEdges[(struct, edge)] = set()
+                connectableBoardEdges[(struct, edge)].add(t.placed_pos)
                 print("tile", t.tile_type, "has", struct, "at", edge)
             elif (struct, edge) in connectableBoardEdges:
-                del connectableBoardEdges[(struct, edge)]
-        print()
+                print("deleting", (struct, edge), "at", t.placed_pos)
+                connectableBoardEdges[(struct, edge)].discard(t.placed_pos)
+        print("\n\n----------------")
+        print(connectableBoardEdges)
+        print("---------------\n\n")
     print("\n\n----------------")
     print(connectableBoardEdges)
     print("---------------\n\n")
@@ -136,114 +141,115 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
                     if latest_tile.internal_edges[e] == StructureType.RIVER:
                         print("latest tile at", latest_pos, "has river at", e, ":", latest_tile.tile_type)
 
-    for (type, edge), (x, y) in connectableBoardEdges.items():
-        startTile = game.state.map._grid[y][x]
+    for (type, edge), position in connectableBoardEdges.items():
+        for x, y in position:
+            startTile = game.state.map._grid[y][x]
 
-        if not startTile:
-            continue
+            if not startTile:
+                continue
 
-        # First complete anything with just 1 incomplete edge
-        returnDict = countIncompleteEdges(game, startTile, edge)
-        incompleteEdges = returnDict[dfsEnums.INCOMPLETEEDGES]
-        claims: dict[int, int] = returnDict[dfsEnums.CLAIMS] # type: ignore
-        
-        ours = game.state.me.player_id in claims
-        unclaimed = len(claims) == 0
+            # First complete anything with just 1 incomplete edge
+            returnDict = countIncompleteEdges(game, startTile, edge)
+            incompleteEdges = returnDict[dfsEnums.INCOMPLETEEDGES]
+            claims: dict[int, int] = returnDict[dfsEnums.CLAIMS] # type: ignore
+            
+            ours = game.state.me.player_id in claims
+            unclaimed = len(claims) == 0
 
-        # Position that we would place the tile
-        emptySquarePos: tuple[int, int] | None = None
-        match edge:
-            case "left_edge":
-                emptySquarePos = (y, x - 1)
-            case "right_edge":
-                emptySquarePos = (y, x + 1)
-            case "top_edge":
-                emptySquarePos = (y - 1, x)
-            case "bottom_edge":
-                emptySquarePos = (y + 1, x)
+            # Position that we would place the tile
+            emptySquarePos: tuple[int, int] | None = None
+            match edge:
+                case "left_edge":
+                    emptySquarePos = (y, x - 1)
+                case "right_edge":
+                    emptySquarePos = (y, x + 1)
+                case "top_edge":
+                    emptySquarePos = (y - 1, x)
+                case "bottom_edge":
+                    emptySquarePos = (y + 1, x)
 
-        if emptySquarePos is None:
-            continue
+            if emptySquarePos is None:
+                continue
 
-        for i, card in enumerate(hand):
-            if game.can_place_tile_at(card, emptySquarePos[1], emptySquarePos[0]):
-                # Dont help others lmao
-                if not ours and not unclaimed:
-                    continue
+            for i, card in enumerate(hand):
+                if game.can_place_tile_at(card, emptySquarePos[1], emptySquarePos[0]):
+                    # Dont help others lmao
+                    if not ours and not unclaimed:
+                        continue
 
-                if riverTurn:
+                    if riverTurn:
 
-                    nextEmptySquarePos: tuple[int, int] | None = None
-                    nextEdge = None
-                    currentEdge = Tile.get_opposite(edge)
-                    for e in Tile.get_edges():
-                        if e == currentEdge:
-                            continue
+                        nextEmptySquarePos: tuple[int, int] | None = None
+                        nextEdge = None
+                        currentEdge = Tile.get_opposite(edge)
+                        for e in Tile.get_edges():
+                            if e == currentEdge:
+                                continue
 
-                        if card.internal_edges[e] != StructureType.RIVER:
-                            continue
-                        nextEdge = e
-                        match e:
-                            case "left_edge":
-                                nextEmptySquarePos = (emptySquarePos[0], emptySquarePos[1] - 1)
-                            case "right_edge":
-                                nextEmptySquarePos = (emptySquarePos[0], emptySquarePos[1] + 1)
-                            case "top_edge":
-                                nextEmptySquarePos = (emptySquarePos[0] - 1, emptySquarePos[1])
-                            case "bottom_edge":
-                                nextEmptySquarePos = (emptySquarePos[0] + 1, emptySquarePos[1])
+                            if card.internal_edges[e] != StructureType.RIVER:
+                                continue
+                            nextEdge = e
+                            match e:
+                                case "left_edge":
+                                    nextEmptySquarePos = (emptySquarePos[0], emptySquarePos[1] - 1)
+                                case "right_edge":
+                                    nextEmptySquarePos = (emptySquarePos[0], emptySquarePos[1] + 1)
+                                case "top_edge":
+                                    nextEmptySquarePos = (emptySquarePos[0] - 1, emptySquarePos[1])
+                                case "bottom_edge":
+                                    nextEmptySquarePos = (emptySquarePos[0] + 1, emptySquarePos[1])
 
+                            
+                        #if 3 or more immediate neighbours then has to be immediate u turn so illegal, swap directions and hope
+                        if countSurroundingTiles(game, nextEmptySquarePos[1], nextEmptySquarePos[0]) >= 3:
+                            card.rotate_clockwise(2) # flips otherway
+                            #TODO: check if this is actually a valid placement if not then panic cuz should always be valid after rotation if initial invalid
+
+                        #should only ever have one river tile card in hand so can just return?
+                        card.placed_pos = emptySquarePos[1], emptySquarePos[0]
+                        lastPlaced = card._to_model()
+
+                        #TODO immediate claim meeple logic??
                         
-                    #if 3 or more immediate neighbours then has to be immediate u turn so illegal, swap directions and hope
-                    if countSurroundingTiles(game, nextEmptySquarePos[1], nextEmptySquarePos[0]) >= 3:
-                        card.rotate_clockwise(2) # flips otherway
-                        #TODO: check if this is actually a valid placement if not then panic cuz should always be valid after rotation if initial invalid
-
-                    #should only ever have one river tile card in hand so can just return?
-                    card.placed_pos = emptySquarePos[1], emptySquarePos[0]
-                    lastPlaced = card._to_model()
-
-                    #TODO immediate claim meeple logic??
-                    
-                    return game.move_place_tile(query, card._to_model(), i)
-                        
+                        return game.move_place_tile(query, card._to_model(), i)
+                            
 
 
-                # From here, everything is either already ours or unclaimed and not river turns
-                # Immediately place the card if we can finish a structure THAT IS OURS OR UNCLAIMED
-                elif incompleteEdges == 1:
-                    card.placed_pos = emptySquarePos[1], emptySquarePos[0]
-                    lastPlaced = card._to_model()
+                    # From here, everything is either already ours or unclaimed and not river turns
+                    # Immediately place the card if we can finish a structure THAT IS OURS OR UNCLAIMED
+                    elif incompleteEdges == 1:
+                        card.placed_pos = emptySquarePos[1], emptySquarePos[0]
+                        lastPlaced = card._to_model()
 
-                    # Set immediate claim flag to place a meeple
-                    if unclaimed:
-                        immediateClaim = True
-                        claimingEdge = Tile.get_opposite(edge)
-                    return game.move_place_tile(query, card._to_model(), i)
+                        # Set immediate claim flag to place a meeple
+                        if unclaimed:
+                            immediateClaim = True
+                            claimingEdge = Tile.get_opposite(edge)
+                        return game.move_place_tile(query, card._to_model(), i)
 
-                # Then set priority to extending our cities with emblems
-                elif card in emblemCards:
-                    optimalTile = card
-                    optimalPos = emptySquarePos[1], emptySquarePos[0]
-                    placingEmblem = True
-
-                    if unclaimed:
-                        wantToClaim = True
-                        claimingEdge = Tile.get_opposite(edge)
-
-                # If we arent placing an emblem then focus on extending anything we have
-                elif not placingEmblem:
-                    if ours:
+                    # Then set priority to extending our cities with emblems
+                    elif card in emblemCards:
                         optimalTile = card
                         optimalPos = emptySquarePos[1], emptySquarePos[0]
-                        extendingOurs = True
-                    elif not extendingOurs:
-                        optimalTile = card
-                        optimalPos = emptySquarePos[1], emptySquarePos[0]
+                        placingEmblem = True
 
-                        # If we havent already found a tile that is ours and the current structure is unclaimed
-                        wantToClaim = True
-                        claimingEdge = Tile.get_opposite(edge)
+                        if unclaimed:
+                            wantToClaim = True
+                            claimingEdge = Tile.get_opposite(edge)
+
+                    # If we arent placing an emblem then focus on extending anything we have
+                    elif not placingEmblem:
+                        if ours:
+                            optimalTile = card
+                            optimalPos = emptySquarePos[1], emptySquarePos[0]
+                            extendingOurs = True
+                        elif not extendingOurs:
+                            optimalTile = card
+                            optimalPos = emptySquarePos[1], emptySquarePos[0]
+
+                            # If we havent already found a tile that is ours and the current structure is unclaimed
+                            wantToClaim = True
+                            claimingEdge = Tile.get_opposite(edge)
 
     if optimalTile:
         optimalTile.placed_pos = optimalPos
