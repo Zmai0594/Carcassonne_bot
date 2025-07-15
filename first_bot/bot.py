@@ -37,8 +37,6 @@ connectableBoardEdges: dict[tuple[StructureType, str], tuple[int, int]] = {}
 def findValidPlacements(game: Game) -> None:
     cards = game.state.my_tiles
     grid = game.state.map._grid
-    height = len(grid) # number of rows
-    width = len(grid[0]) if height > 0 else 0
 
     four_latest = game.state.map.placed_tiles[-4:]
     directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
@@ -74,6 +72,8 @@ def findValidPlacements(game: Game) -> None:
             if t.get_external_tile(edge, t.placed_pos, grid) is None:
                 connectableBoardEdges[(struct, edge)] = t.placed_pos
                 print("tile", t.tile_type, "has", struct, "at", edge)
+            else:
+                del connectableBoardEdges[(struct, edge)]
     print("\n\n----------------")
     print(connectableBoardEdges)
     print("---------------\n\n")
@@ -118,12 +118,20 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
     extendingOurs = False
     emblemCards = []
 
+    latest_tile = game.state.map.placed_tiles[-1]
+    latest_pos = latest_tile.placed_pos
+
     for card in hand:
         if TileModifier.EMBLEM in card.modifiers:
             emblemCards.append(card)
         
-        if TileModifier.RIVER in card.modifiers:
-            riverTurn = True
+        for edge in card.get_edges():
+            if card.internal_edges[edge] == StructureType.RIVER:
+                riverTurn = True
+                print("properly set here on edge", edge)
+                for e in latest_tile.get_edges():
+                    if latest_tile.internal_edges[e] == StructureType.RIVER:
+                        print("latest tile at", latest_pos, "has river at", e, ":", latest_tile.tile_type)
 
     for (type, edge), (x, y) in connectableBoardEdges.items():
         startTile = game.state.map._grid[y][x]
