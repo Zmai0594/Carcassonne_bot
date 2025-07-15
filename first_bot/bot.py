@@ -40,29 +40,43 @@ def findValidPlacements(game: Game) -> None:
     height = len(grid) # number of rows
     width = len(grid[0]) if height > 0 else 0
 
-    for row in range(height):
-        for col in range(width):
-            tile = grid[row][col]
+    four_latest = game.state.map.placed_tiles[-4:]
+    directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+    need_to_check = []
+
+
+    for t in four_latest:
+        need_to_check.append(t)
+        # Valid Placements
+        for direction in directions:
+            x = t.placed_pos[0] + direction[0]
+            y = t.placed_pos[1] + direction[1]
+            tile = grid[y][x]
             if tile is None:
                 # Find if empty square is a valid placement
                 for tileIndex, tile in enumerate(cards):
                     # NOTE !! CAN_PLACE_TILE_AT ONLY RETURNS BOOLEAN TRUE OR FALSE. IT ALSO ROTATES THE TILE TO THE CORRECT POSITION
                     # IF THERE ARE MULTIPLE VALID PLACEMENTS, IT IS SIMPLY THE FIRST ONE CHECKED, AND MAY NOT BE OPTIMAL
-                    if game.can_place_tile_at(tile, row, col):
+                    if game.can_place_tile_at(tile, x, y):
                         if tileIndex in validPlacements:
-                            validPlacements[tileIndex].append((row, col))
+                            validPlacements[tileIndex].append((x, y))
                         else:
-                            validPlacements[tileIndex] = [(row, col)]
+                            validPlacements[tileIndex] = [(x, y)]
             else:
-                # this grid location has a Tile
-                externalTiles: dict[str, "Tile | None"] = tile.get_external_tiles(grid)
-                for edge, externalTile in externalTiles.items():
-                    if externalTile is not None:
-                        continue
-                   
-                    # External tile does not exist, therefore "tile" is a border tile of the current board
-                    if tile.placed_pos:
-                        connectableBoardEdges[(tile.internal_edges[edge], edge)] = tile.placed_pos
+                # Add the tile to need_to check if it exists -> updating the external edges
+                need_to_check.append(tile)
+
+    print("valid placements concluded", flush=True)
+
+    # External Edges
+    for t in need_to_check:
+        for edge, struct in t.internal_edges.items():
+            if t.get_external_tile(edge, t.placed_pos, grid) is None:
+                connectableBoardEdges[(struct, edge)] = t.placed_pos
+                print("tile", t.tile_type, "has", struct, "at", edge)
+    print("\n\n----------------")
+    print(connectableBoardEdges)
+    print("---------------\n\n")
 
 
 def main():
