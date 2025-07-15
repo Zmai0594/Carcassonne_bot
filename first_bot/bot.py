@@ -215,9 +215,14 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
                                     nextEmptySquarePos = (emptySquarePos[0] + 1, emptySquarePos[1])
 
                             
+                        #if 2 or more immediate neighbours then has to be immediate u turn so illegal, swap directions and hope
                         #if 3 or more immediate neighbours then has to be immediate u turn so illegal, swap directions and hope
-                        if countSurroundingTiles(game, nextEmptySquarePos[1], nextEmptySquarePos[0]) >= 3:
-                            card.rotate_clockwise(2) # flips otherway
+                        numAdj = countSurroundingTiles(game, nextEmptySquarePos[1], nextEmptySquarePos[0])
+                        print("Placed tile at", nextEmptySquarePos[1], nextEmptySquarePos[0], "would have", numAdj, "adjacent tiles")
+                        if numAdj >= 2:
+                            card.rotate_clockwise(1) # flips otherway
+                            # validate
+                            game.can_place_tile_at(card, emptySquarePos[1], emptySquarePos[0])
                             print("flipped", card.tile_type, ", edges are now:", card.internal_edges)
                             #TODO: check if this is actually a valid placement if not then panic cuz should always be valid after rotation if initial invalid
 
