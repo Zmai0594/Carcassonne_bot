@@ -37,14 +37,16 @@ connectableBoardEdges: dict[tuple[StructureType, str], tuple[int, int]] = {}
 def findValidPlacements(game: Game) -> None:
     cards = game.state.my_tiles
     grid = game.state.map._grid
+    height = len(grid) # number of rows
+    width = len(grid[0]) if height > 0 else 0
 
     four_latest = game.state.map.placed_tiles[-4:]
     directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
-    need_to_check = []
+    need_to_check = set()
 
 
     for t in four_latest:
-        need_to_check.append(t)
+        need_to_check.add(t)
         # Valid Placements
         for direction in directions:
             x = t.placed_pos[0] + direction[0]
@@ -62,7 +64,7 @@ def findValidPlacements(game: Game) -> None:
                             validPlacements[tileIndex] = [(x, y)]
             else:
                 # Add the tile to need_to check if it exists -> updating the external edges
-                need_to_check.append(tile)
+                need_to_check.add(tile)
 
     print("valid placements concluded", flush=True)
 
@@ -72,8 +74,9 @@ def findValidPlacements(game: Game) -> None:
             if t.get_external_tile(edge, t.placed_pos, grid) is None:
                 connectableBoardEdges[(struct, edge)] = t.placed_pos
                 print("tile", t.tile_type, "has", struct, "at", edge)
-            else:
+            elif (struct, edge) in connectableBoardEdges:
                 del connectableBoardEdges[(struct, edge)]
+        print()
     print("\n\n----------------")
     print(connectableBoardEdges)
     print("---------------\n\n")
