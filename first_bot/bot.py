@@ -188,11 +188,13 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
             if emptySquarePos is None:
                 continue
 
-            print("currently examining:", edge, "at position", x, y, flush=True)
+            print("\ncurrently examining:", edge, "at position", x, y, flush=True)
+            print("hand is", hand, len(hand), flush=True)
             for i, card in enumerate(hand):
                 if game.can_place_tile_at(card, emptySquarePos[1], emptySquarePos[0]):
                     # Dont help others lmao
                     if not ours and not unclaimed:
+                        print("curr card is", card.tile_type)
                         continue
 
                     if riverTurn:
@@ -261,6 +263,8 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
                         if unclaimed:
                             wantToClaim = True
                             claimingEdge = Tile.get_opposite(edge)
+                        
+                        print(optimalTile.tile_type, "I AM INEVITABLE", claimingEdge)
 
                     # If we arent placing an emblem then focus on extending anything we have
                     elif not placingEmblem:
@@ -268,6 +272,7 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
                             optimalTile = card
                             optimalPos = emptySquarePos[1], emptySquarePos[0]
                             extendingOurs = True
+                            print("its...ours?")
                         elif not extendingOurs:
                             optimalTile = card
                             optimalPos = emptySquarePos[1], emptySquarePos[0]
@@ -275,8 +280,10 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
                             # If we havent already found a tile that is ours and the current structure is unclaimed
                             wantToClaim = True
                             claimingEdge = Tile.get_opposite(edge)
+                            print("\ntrying to claim tile", optimalTile.tile_type, "with claiming edge", claimingEdge, "\n")
+            print("finished examining")
 
-    print("placing tile here", optimalTile)
+    print("\nplacing tile here", optimalTile, "\n")
     if optimalTile:
         optimalTile.placed_pos = optimalPos
         lastPlaced = optimalTile._to_model()
