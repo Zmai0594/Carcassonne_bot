@@ -2,7 +2,6 @@ from lib.interface.events.moves.move_place_meeple import (
     MovePlaceMeeple,
     MovePlaceMeeplePass,
 )
-
 from helper.game import Game
 from lib.interface.events.moves.move_place_tile import MovePlaceTile
 from lib.interface.queries.typing import QueryType
@@ -41,12 +40,14 @@ def findValidPlacements(game: Game) -> None:
     height = len(grid) # number of rows
     width = len(grid[0]) if height > 0 else 0
 
-    four_latest = game.state.map.placed_tiles[-4:]
+    four_latest:list[Tile] = game.state.map.placed_tiles[-4:]
     directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
-    need_to_check = set()
+    need_to_check:set[Tile] = set()
 
 
     for t in four_latest:
+        if not t:
+            continue
         need_to_check.add(t)
         # Valid Placements
         for direction in directions:
@@ -71,6 +72,8 @@ def findValidPlacements(game: Game) -> None:
 
     # External Edges
     for t in need_to_check:
+        if not t:
+            continue
         for edge, struct in t.internal_edges.items():
             if t.get_external_tile(edge, t.placed_pos, grid) is None:
                 if (struct, edge) not in connectableBoardEdges:
@@ -82,23 +85,25 @@ def findValidPlacements(game: Game) -> None:
                 connectableBoardEdges[(struct, edge)].discard(t.placed_pos)
                 if len(connectableBoardEdges[(struct, edge)]) == 0:
                     del connectableBoardEdges[(struct, edge)]
-        print("\n\n----------------")
-        print(connectableBoardEdges)
-        print("---------------\n\n")
-    print("\n\n----------------")
-    print(connectableBoardEdges)
-    print("---------------\n\n")
+        print("\n----------------", flush=True)
+        print("connectableBoardEdges for each tile to be checked", flush=True)
+        print(connectableBoardEdges, flush=True)
+        print("---------------\n", flush=True)
+    print("\n----------------", flush=True)
+    print("connectable board edge after all tiles checked???", flush=True)
+    print(connectableBoardEdges, flush=True)
+    print("---------------\n", flush=True)
 
 
 def main():
     game = Game()
-    print("bot started")
+    print("bot started", flush=True)
     while True:
-        print("waiting for query")
+        print("waiting for query", flush=True)
         query = game.get_next_query()
-        print("got query", query)
+        print("got query", query, flush=True)
         findValidPlacements(game)
-        print("hereeee")
+        print("hereeee", flush=True)
 
         def choose_move(query: QueryType) -> MoveType:
             match query:
@@ -111,7 +116,7 @@ def main():
         game.send_move(choose_move(query))
 
 def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
-
+    print("handle place tile called", flush=True)
     #Donalds hello world!!!
     hand = game.state.my_tiles
     # Keep track of the last placed from OUR BOT ONLYs
@@ -119,37 +124,39 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
     global immediateClaim
     global claimingEdge
     global wantToClaim
-    immediateClaim = False
-    claimingEdge = ""
-    wantToClaim = False
-    riverTurn = False
+    immediateClaim:bool = False
+    claimingEdge:str = ""
+    wantToClaim:bool = False
+    riverTurn:bool = False
 
-    optimalTile = None
-    optimalPos = None
-    placingEmblem = False
-    extendingOurs = False
-    emblemCards = []
+    optimalTile:Tile | None = None
+    optimalPos:tuple[int, int] | None = None
+    placingEmblem:bool = False
+    extendingOurs:bool = False
+    emblemCards:list[Tile] = []
 
     
-    latest_tile = game.state.map.placed_tiles[-1]
-    latest_pos = latest_tile.placed_pos
+    latest_tile:Tile = game.state.map.placed_tiles[-1]
+    latest_pos:tuple[int, int] | None = latest_tile.placed_pos
 
-    print(len(hand), flush=True)
+    print("hand length", len(hand), flush=True)
     for card in hand:
+        print("exampling card", card.tile_type, "with modifiers", card.modifiers, flush=True)
         if TileModifier.EMBLEM in card.modifiers:
+            print("card has emblem", flush=True)
             emblemCards.append(card)
         
-        print("boop", card.modifiers, card.tile_type)
         for edge in card.get_edges():
             if card.internal_edges[edge] == StructureType.RIVER:
                 riverTurn = True
-                print("properly set here on edge", edge)
+                print("card has river at", edge, flush=True)
+                print("properly set here on edge", edge, flush=True)
                 for e in latest_tile.get_edges():
                     if latest_tile.internal_edges[e] == StructureType.RIVER:
-                        print("latest tile at", latest_pos, "has river at", e, ":", latest_tile.tile_type)
+                        print("latest tile at", latest_pos, "has river at", e, ":", latest_tile.tile_type, flush=True)
     
     print()
-    print("latest tile edges:")
+    print("latest tile of type ", latest_tile.tile_type, "has edges:", flush=True)
     for e in latest_tile.get_edges():
         print(e, latest_tile.internal_edges[e])
     print()
@@ -170,8 +177,8 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
             incompleteEdges = returnDict[dfsEnums.INCOMPLETEEDGES]
             claims: dict[int, int] = returnDict[dfsEnums.CLAIMS] # type: ignore
             
-            ours = game.state.me.player_id in claims
-            unclaimed = len(claims) == 0
+            ours:bool = game.state.me.player_id in claims
+            unclaimed:bool = len(claims) == 0
 
             # Position that we would place the tile
             emptySquarePos: tuple[int, int] | None = None
@@ -186,7 +193,9 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
                     emptySquarePos = (y + 1, x)
 
             if emptySquarePos is None:
+                print("empty pos is None, think this might be a problem. skipping to next possible edge", edge, flush=True)
                 continue
+            print("empty square pos is", emptySquarePos[1], emptySquarePos[0], "for edge", edge, flush=True)
 
             print("\ncurrently examining:", edge, "at position", x, y, flush=True)
             print("hand is", hand, len(hand), flush=True)
@@ -219,10 +228,14 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
                                 case "bottom_edge":
                                     nextEmptySquarePos = (emptySquarePos[0] + 1, emptySquarePos[1])
 
-                            
+                        
+                        if nextEmptySquarePos is None:
+                            print("next empty square pos is None, skipping to next possible edge", edge, flush=True)
+                            continue
+                        print("next empty square pos is", nextEmptySquarePos[1], nextEmptySquarePos[0], "for edge", nextEdge, flush=True)
                         #if 2 or more immediate neighbours then has to be immediate u turn so illegal, swap directions and hope
                         numAdj = countSurroundingTiles(game, nextEmptySquarePos[1], nextEmptySquarePos[0])
-                        print("Placed tile at", nextEmptySquarePos[1], nextEmptySquarePos[0], "would have", numAdj, "adjacent tiles")
+                        print("Placed tile at", nextEmptySquarePos[1], nextEmptySquarePos[0], "would have", numAdj, "adjacent tiles", flush=True)
                         if numAdj >= 2:
                             card.rotate_clockwise(1) # flips otherway
                             # Either needs to flip once or thrice
@@ -242,9 +255,10 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
                             
 
 
-                    # From here, everything is either already ours or unclaimed and not river turns
+                    # From here, everything is either already ours or unclaimed and not  in river turns
                     # Immediately place the card if we can finish a structure THAT IS OURS OR UNCLAIMED
                     elif incompleteEdges == 1:
+                        print("can be immediate finished", flush=True)
                         card.placed_pos = emptySquarePos[1], emptySquarePos[0]
                         lastPlaced = card._to_model()
 
@@ -252,10 +266,12 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
                         if unclaimed:
                             immediateClaim = True
                             claimingEdge = Tile.get_opposite(edge)
+                            print("unclaimed tile, setting immediate claim to", claimingEdge, flush=True)
                         return game.move_place_tile(query, card._to_model(), i)
 
                     # Then set priority to extending our cities with emblems
                     elif card in emblemCards:
+                        print("card has emblem, placing it", flush=True)
                         optimalTile = card
                         optimalPos = emptySquarePos[1], emptySquarePos[0]
                         placingEmblem = True
@@ -263,38 +279,43 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
                         if unclaimed:
                             wantToClaim = True
                             claimingEdge = Tile.get_opposite(edge)
+                            print("unclaimed tile, setting want to claim to", claimingEdge, flush=True)
                         
-                        print(optimalTile.tile_type, "I AM INEVITABLE", claimingEdge)
+                        print(optimalTile.tile_type, "I AM INEVITABLE (claiming emblem card tile)", claimingEdge, flush=True)
 
                     # If we arent placing an emblem then focus on extending anything we have
                     elif not placingEmblem:
                         if ours:
+                            print("extending our structure", structType, "at edge", edge, flush=True)
                             optimalTile = card
                             optimalPos = emptySquarePos[1], emptySquarePos[0]
                             extendingOurs = True
                             print("its...ours?")
                         elif not extendingOurs:
+                            print("extending unclaimed structure", structType, "at edge", edge, flush=True)
                             optimalTile = card
                             optimalPos = emptySquarePos[1], emptySquarePos[0]
 
                             # If we havent already found a tile that is ours and the current structure is unclaimed
                             wantToClaim = True
                             claimingEdge = Tile.get_opposite(edge)
-                            print("\ntrying to claim tile", optimalTile.tile_type, "with claiming edge", claimingEdge, "\n")
-            print("finished examining")
+                            print("\ntrying to claim tile", optimalTile.tile_type, "with claiming edge", claimingEdge, "\n", flush=True)
+    print("finished examining possible tile placements", flush=True)
 
-    print("\nplacing tile here", optimalTile, "\n")
     if optimalTile:
+        print("\nplacing tile ", optimalTile, "at ", optimalTile.placed_pos, "\n", flush=True)
         optimalTile.placed_pos = optimalPos
         lastPlaced = optimalTile._to_model()
         return game.move_place_tile(query, optimalTile._to_model(), hand.index(optimalTile))
     
+    print("no optimal tile found, placing first valid placement", flush=True)
     # Only returns here if there is no way to extend either our OWN or UNCLAIMED structures
     firstTileIndex = next(iter(validPlacements))
     firstTile = hand[firstTileIndex]
     firstCoords = validPlacements[firstTileIndex][0]   #TODO double check x y order for this is correct as x y
     firstTile.placed_pos = firstCoords
     lastPlaced = firstTile._to_model()
+    print("placing first tile", firstTile.tile_type, "at", firstTile.placed_pos, "with rotation", firstTile.rotation, flush=True)
     return game.move_place_tile(query, firstTile._to_model(), firstTileIndex)
 
 def countSurroundingTiles(game: Game, x: int, y: int, countCorners:bool = True) -> int:
@@ -424,9 +445,9 @@ def countIncompleteEdges(game:Game, startTile: Tile, startEdge: str) -> dict[dfs
 
 
 def handle_place_meeple(query: QueryPlaceTile, game: Game) -> MovePlaceMeeple | MovePlaceMeeplePass:
-    print("HELLOOO MEEPLES\n")
+    print("HELLOOO MEEPLES\n", flush=True)
     if game.state.num_placed_tiles < 3:
-        print("PASSING")
+        print("PASSING", flush=True)
         return game.move_place_meeple_pass(query)
 
     x, y = lastPlaced.pos
@@ -435,22 +456,23 @@ def handle_place_meeple(query: QueryPlaceTile, game: Game) -> MovePlaceMeeple | 
     assert tile is not None
 
     if immediateClaim:
-        print("MEEPLE IMMEDIATE CLAIM ON", lastPlaced.tile_type, claimingEdge)
+        print("MEEPLE IMMEDIATE CLAIM ON", lastPlaced.tile_type, claimingEdge, flush=True)
         return game.move_place_meeple(query, lastPlaced, claimingEdge)
-    
-    print("GOT TO HERE ON", lastPlaced.tile_type, claimingEdge)
+
+    print("GOT TO HERE ON", lastPlaced.tile_type, claimingEdge, flush=True)
 
     if game.state.me.num_meeples < 2:
+        print("NEED TO KEEP ONE MEEPLE. PASSING", flush=True)
         return game.move_place_meeple_pass(query)
     
     if wantToClaim:
-        print("MEEPLE WANT CLAIM ON", lastPlaced.tile_type, claimingEdge)
+        print("MEEPLE WANT CLAIM ON", lastPlaced.tile_type, claimingEdge, flush=True)
         return game.move_place_meeple(query, lastPlaced, claimingEdge)
 
-    print("meeple pass,")
+    print("meeple pass,", flush=True)
     return game.move_place_meeple_pass(query)
 
-print("test bot.py loaded")
+print("test bot.py loaded", flush=True)
 
 if __name__ == "__main__":
     main()
