@@ -138,7 +138,7 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
         if TileModifier.EMBLEM in card.modifiers:
             emblemCards.append(card)
         
-        print("boop", card.modifiers, card.tile_type)
+        print("modifiers:", card.modifiers, card.tile_type)
         for edge in card.get_edges():
             if card.internal_edges[edge] == StructureType.RIVER:
                 riverTurn = True
@@ -222,7 +222,7 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
                         print("Placed tile at", nextEmptySquarePos[1], nextEmptySquarePos[0], "would have", numAdj, "adjacent tiles")
                         if numAdj >= 2:
                             card.rotate_clockwise(1) # flips otherway
-                            # Either needs to flip once or twice
+                            # Either needs to flip once or thrice
                             if card.internal_edges[Tile.get_opposite(edge)] != StructureType.RIVER:
                                 card.rotate_clockwise(2)
                             print("flipped", card.tile_type, ", edges are now:", card.internal_edges)
