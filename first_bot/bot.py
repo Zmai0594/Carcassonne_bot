@@ -416,7 +416,9 @@ def countIncompleteEdges(game:Game, startTile: Tile, startEdge: str) -> dict[dfs
 
 
 def handle_place_meeple(query: QueryPlaceTile, game: Game) -> MovePlaceMeeple | MovePlaceMeeplePass:
+    print("HELLOOO MEEPLES\n")
     if game.state.num_placed_tiles < 3:
+        print("PASSING")
         return game.move_place_meeple_pass(query)
 
     x, y = lastPlaced.pos
