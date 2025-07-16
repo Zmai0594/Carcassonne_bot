@@ -138,7 +138,7 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
         if TileModifier.EMBLEM in card.modifiers:
             emblemCards.append(card)
         
-        print("modifiers:", card.modifiers, card.tile_type)
+        print("boop", card.modifiers, card.tile_type)
         for edge in card.get_edges():
             if card.internal_edges[edge] == StructureType.RIVER:
                 riverTurn = True
@@ -425,15 +425,19 @@ def handle_place_meeple(query: QueryPlaceTile, game: Game) -> MovePlaceMeeple | 
     assert tile is not None
 
     if immediateClaim:
+        print("MEEPLE IMMEDIATE CLAIM ON", lastPlaced.tile_type, claimingEdge)
         return game.move_place_meeple(query, lastPlaced, claimingEdge)
     
+    print("GOT TO HERE ON", lastPlaced.tile_type, claimingEdge)
+
     if game.state.me.num_meeples < 2:
         return game.move_place_meeple_pass(query)
     
     if wantToClaim:
+        print("MEEPLE WANT CLAIM ON", lastPlaced.tile_type, claimingEdge)
         return game.move_place_meeple(query, lastPlaced, claimingEdge)
 
-
+    print("meeple pass,")
     return game.move_place_meeple_pass(query)
 
 print("test bot.py loaded")
