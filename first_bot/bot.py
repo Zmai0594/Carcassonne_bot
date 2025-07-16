@@ -249,6 +249,7 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
                         if unclaimed:
                             immediateClaim = True
                             claimingEdge = Tile.get_opposite(edge)
+                        print("we are here with unclaimed flag:", unclaimed, "immClaim:", immediateClaim, "claiming edge", claimingEdge)
                         return game.move_place_tile(query, card._to_model(), i)
 
                     # Then set priority to extending our cities with emblems
