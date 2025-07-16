@@ -1,7 +1,10 @@
+from src.helper.helper.game import Game
+
 from lib.interface.events.moves.move_place_meeple import (
     MovePlaceMeeple,
     MovePlaceMeeplePass,
 )
+
 from helper.game import Game
 from lib.interface.events.moves.move_place_tile import MovePlaceTile
 from lib.interface.queries.typing import QueryType
