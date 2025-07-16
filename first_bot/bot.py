@@ -444,8 +444,20 @@ def countIncompleteEdges(game:Game, startTile: Tile, startEdge: str) -> dict[dfs
     return returnDict
 
 
+claimedStructures:dict[StructureType, int] = {
+    StructureType.CITY: 0,
+    StructureType.ROAD: 0,
+    StructureType.GRASS: 0,
+    StructureType.MONASTARY: 0,
+}
+
+MAXCLAIMEDCITIES = 4
+MAXCLAIMEDROADS = 3
+MAXCLAIMEDGRASS = 0 #ignore grass for now TODO: grass logic
+MAXCLAIMEDMONASTARIES = 10 #we always like monastaries, except probably some edge case logic
 def handle_place_meeple(query: QueryPlaceTile, game: Game) -> MovePlaceMeeple | MovePlaceMeeplePass:
     print("HELLOOO MEEPLES\n", flush=True)
+    print("CURRENT CLAIMED STRUCTURES", claimedStructures, flush=True)
     if game.state.num_placed_tiles < 3:
         print("PASSING", flush=True)
         return game.move_place_meeple_pass(query)
@@ -466,8 +478,25 @@ def handle_place_meeple(query: QueryPlaceTile, game: Game) -> MovePlaceMeeple | 
         return game.move_place_meeple_pass(query)
     
     if wantToClaim:
-        print("MEEPLE WANT CLAIM ON", lastPlaced.tile_type, claimingEdge, flush=True)
-        return game.move_place_meeple(query, lastPlaced, claimingEdge)
+        structure = lastPlaced.internal_edges[claimingEdge]
+        print("MEEPLE WANT CLAIM ON", lastPlaced.tile_type, claimingEdge, "FOR", structure, flush=True)
+
+        if structure == StructureType.CITY and claimedStructures[StructureType.CITY] < MAXCLAIMEDCITIES:
+            claimedStructures[StructureType.CITY] += 1
+            print("claiming city", flush=True)
+            return game.move_place_meeple(query, lastPlaced, claimingEdge)
+        elif structure == StructureType.ROAD and claimedStructures[StructureType.ROAD] < MAXCLAIMEDROADS:
+            claimedStructures[StructureType.ROAD] += 1
+            print("claiming road", flush=True)
+            return game.move_place_meeple(query, lastPlaced, claimingEdge)
+        elif structure == StructureType.GRASS and claimedStructures[StructureType.GRASS] < MAXCLAIMEDGRASS:
+            claimedStructures[StructureType.GRASS] += 1
+            print("claiming grass", flush=True)
+            return game.move_place_meeple(query, lastPlaced, claimingEdge)
+        elif structure == StructureType.MONASTARY and claimedStructures[StructureType.MONASTARY] <  MAXCLAIMEDMONASTARIES:
+            claimedStructures[StructureType.MONASTARY] += 1
+            print("claiming monastary", flush=True)
+            return game.move_place_meeple(query, lastPlaced, claimingEdge)
 
     print("meeple pass,", flush=True)
     return game.move_place_meeple_pass(query)
