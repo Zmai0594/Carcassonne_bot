@@ -96,12 +96,11 @@ def main():
         print("waiting for query")
         query = game.get_next_query()
         print("got query", query)
-        findValidPlacements(game)
-        print("hereeee")
 
         def choose_move(query: QueryType) -> MoveType:
             match query:
                 case QueryPlaceTile() as q:
+                    findValidPlacements(game)
                     return handle_place_tile(q, game)
 
                 case QueryPlaceMeeple() as q:
