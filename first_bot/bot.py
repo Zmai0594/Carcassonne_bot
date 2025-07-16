@@ -274,6 +274,7 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
                             # If we havent already found a tile that is ours and the current structure is unclaimed
                             wantToClaim = True
                             claimingEdge = Tile.get_opposite(edge)
+                            print("trying to claim tile", optimalTile.tile_type, "with claiming edge", claimingEdge)
 
     print("placing tile here", optimalTile)
     if optimalTile:
@@ -417,13 +418,12 @@ def countIncompleteEdges(game:Game, startTile: Tile, startEdge: str) -> dict[dfs
 
 def handle_place_meeple(query: QueryPlaceTile, game: Game) -> MovePlaceMeeple | MovePlaceMeeplePass:
     print("HELLOOO MEEPLES\n")
-    if game.state.num_placed_tiles < 3:
-        print("PASSING")
-        return game.move_place_meeple_pass(query)
+    # if game.state.num_placed_tiles < 3:
+    #     print("PASSING", game.state.num_placed_tiles)
+    #     return game.move_place_meeple_pass(query)
 
     x, y = lastPlaced.pos
     tile = game.state.map._grid[y][x]
-
     assert tile is not None
 
     if immediateClaim:
