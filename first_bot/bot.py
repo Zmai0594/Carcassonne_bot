@@ -24,9 +24,10 @@ MAXCOLINDEX = MAX_MAP_LENGTH - 1
 # Each value in validPlacements is a tuple of the valid x and y position
 validPlacements: dict[int, list[tuple[int, int]]] = {}
 lastPlaced: TileModel
-immediateClaim = False
+lastPlacedTile: Tile
+immediateClaim: bool = False
 claimingEdge: str = ""
-wantToClaim = False
+wantToClaim: bool = False
 
 # key = structure and edge
 # value = position of tile that exists already with said key
@@ -37,8 +38,6 @@ connectableBoardEdges: dict[tuple[StructureType, str], set[tuple[int, int]]] = {
 def findValidPlacements(game: Game) -> None:
     cards = game.state.my_tiles
     grid = game.state.map._grid
-    height = len(grid) # number of rows
-    width = len(grid[0]) if height > 0 else 0
 
     four_latest:list[Tile] = game.state.map.placed_tiles[-4:]
     directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
@@ -97,9 +96,9 @@ def findValidPlacements(game: Game) -> None:
 
 def main():
     game = Game()
-    print("bot started", flush=True)
+    print("bot started")
     while True:
-        print("waiting for query", flush=True)
+        print("waiting for query")
         query = game.get_next_query()
         print("got query", query, flush=True)
         findValidPlacements(game)
@@ -124,9 +123,10 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
     global immediateClaim
     global claimingEdge
     global wantToClaim
-    immediateClaim:bool = False
-    claimingEdge:str = ""
-    wantToClaim:bool = False
+    global lastPlacedTile
+    immediateClaim = False
+    claimingEdge = ""
+    wantToClaim = False
     riverTurn:bool = False
 
     optimalTile:Tile | None = None
@@ -177,6 +177,7 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
             incompleteEdges = returnDict[dfsEnums.INCOMPLETEEDGES]
             claims: dict[int, int] = returnDict[dfsEnums.CLAIMS] # type: ignore
             
+            print("\n\nIncomplete Edges from tile:", startTile.tile_type, "at", (x, y), "is", incompleteEdges, structType, "\n\n")
             ours:bool = game.state.me.player_id in claims
             unclaimed:bool = len(claims) == 0
 
@@ -257,8 +258,8 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
 
                     # From here, everything is either already ours or unclaimed and not  in river turns
                     # Immediately place the card if we can finish a structure THAT IS OURS OR UNCLAIMED
-                    elif incompleteEdges == 1:
-                        print("can be immediate finished", flush=True)
+                    elif incompleteEdges == 1 and structType != StructureType.GRASS:
+                        print("can be immediate finished, finishing a", structType, flush=True)
                         card.placed_pos = emptySquarePos[1], emptySquarePos[0]
                         lastPlaced = card._to_model()
 
@@ -303,9 +304,10 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
     print("finished examining possible tile placements", flush=True)
 
     if optimalTile:
-        print("\nplacing tile ", optimalTile, "at ", optimalTile.placed_pos, "\n", flush=True)
         optimalTile.placed_pos = optimalPos
+        print("\nplacing tile ", optimalTile.tile_type, "at ", optimalTile.placed_pos, "\n", flush=True)
         lastPlaced = optimalTile._to_model()
+        lastPlacedTile = optimalTile
         return game.move_place_tile(query, optimalTile._to_model(), hand.index(optimalTile))
     
     print("no optimal tile found, placing first valid placement", flush=True)
@@ -315,6 +317,7 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
     firstCoords = validPlacements[firstTileIndex][0]   #TODO double check x y order for this is correct as x y
     firstTile.placed_pos = firstCoords
     lastPlaced = firstTile._to_model()
+    lastPlacedTile = firstTile
     print("placing first tile", firstTile.tile_type, "at", firstTile.placed_pos, "with rotation", firstTile.rotation, flush=True)
     return game.move_place_tile(query, firstTile._to_model(), firstTileIndex)
 
@@ -458,9 +461,9 @@ MAXCLAIMEDMONASTARIES = 10 #we always like monastaries, except probably some edg
 def handle_place_meeple(query: QueryPlaceTile, game: Game) -> MovePlaceMeeple | MovePlaceMeeplePass:
     print("HELLOOO MEEPLES\n", flush=True)
     print("CURRENT CLAIMED STRUCTURES", claimedStructures, flush=True)
-    if game.state.num_placed_tiles < 3:
-        print("PASSING", flush=True)
-        return game.move_place_meeple_pass(query)
+    # if game.state.num_placed_tiles < 3:
+    #     print("PASSING", flush=True)
+    #     return game.move_place_meeple_pass(query)
 
     x, y = lastPlaced.pos
     tile = game.state.map._grid[y][x]
@@ -478,7 +481,7 @@ def handle_place_meeple(query: QueryPlaceTile, game: Game) -> MovePlaceMeeple | 
         return game.move_place_meeple_pass(query)
     
     if wantToClaim:
-        structure = lastPlaced.internal_edges[claimingEdge]
+        structure = lastPlacedTile.internal_edges[claimingEdge]
         print("MEEPLE WANT CLAIM ON", lastPlaced.tile_type, claimingEdge, "FOR", structure, flush=True)
 
         if structure == StructureType.CITY and claimedStructures[StructureType.CITY] < MAXCLAIMEDCITIES:
