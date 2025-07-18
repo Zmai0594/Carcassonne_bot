@@ -251,6 +251,13 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
                         lastPlacedTile = card
 
                         #TODO immediate claim meeple logic??
+                        for e in card.get_edges():
+                            if card.internal_edges[e] != StructureType.RIVER or card.internal_edges[e] != StructureType.GRASS and unclaimed:
+                                print("river has edge with structure, claiming")
+                                wantToClaim = True
+                                claimingEdge = e
+
+
                         print("placing tile", card.tile_type, "at", edge, "at position:", emptySquarePos[1], emptySquarePos[0], "with rotation", card.rotation, flush=True)
                         print()
                         return game.move_place_tile(query, card._to_model(), i)
