@@ -248,6 +248,7 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
                         #should only ever have one river tile card in hand so can just return?
                         card.placed_pos = emptySquarePos[1], emptySquarePos[0]
                         lastPlaced = card._to_model()
+                        lastPlacedTile = card
 
                         #TODO immediate claim meeple logic??
                         print("placing tile", card.tile_type, "at", edge, "at position:", emptySquarePos[1], emptySquarePos[0], "with rotation", card.rotation, flush=True)
@@ -262,6 +263,7 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
                         print("can be immediate finished, finishing a", structType, flush=True)
                         card.placed_pos = emptySquarePos[1], emptySquarePos[0]
                         lastPlaced = card._to_model()
+                        lastPlacedTile = card
 
                         # Set immediate claim flag to place a meeple
                         if unclaimed:
@@ -359,6 +361,11 @@ def countIncompleteEdges(game:Game, startTile: Tile, startEdge: str) -> dict[dfs
     }
     seen = set()
     desiredType = startTile.internal_edges[startEdge]
+
+    #skips grass TODO grass logic
+    if desiredType == StructureType.GRASS:
+        return returnDict
+    
     q = deque([(startTile, startEdge)])
     structureBridge = TileModifier.get_bridge_modifier(desiredType)
     
