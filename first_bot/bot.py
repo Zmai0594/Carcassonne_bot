@@ -130,7 +130,7 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
     riverTurn:bool = False
 
     optimalTile:Tile | None = None
-    optimalPos:tuple[int, int] | None = None
+    optimalPos:tuple[int, int]  = (0, 0)
     placingEmblem:bool = False
     extendingOurs:bool = False
     emblemCards:list[Tile] = []
@@ -245,18 +245,25 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
                             print("flipped", card.tile_type, ", edges are now:", card.internal_edges)
                             #TODO: check if this is actually a valid placement if not then panic cuz should always be valid after rotation if initial invalid
 
+
                         #should only ever have one river tile card in hand so can just return?
                         card.placed_pos = emptySquarePos[1], emptySquarePos[0]
                         lastPlaced = card._to_model()
                         lastPlacedTile = card
 
-                        #TODO immediate claim meeple logic??
+                        #claim anything on the river that is a valid stucture
                         for e in card.get_edges():
                             if card.internal_edges[e] != StructureType.RIVER or card.internal_edges[e] != StructureType.GRASS and unclaimed:
                                 print("river has edge with structure, claiming")
                                 wantToClaim = True
                                 claimingEdge = e
-
+                        
+                        if game.can_place_tile_at(card, emptySquarePos[1], emptySquarePos[0]) == False:
+                            print("card is not valid after setting position, this should not happen. placing first avaliable tile. all meeples variables reset just in case", flush=True)
+                            wantToClaim = False
+                            immediateClaim = False
+                            placingEmblem = False
+                            continue
 
                         print("placing tile", card.tile_type, "at", edge, "at position:", emptySquarePos[1], emptySquarePos[0], "with rotation", card.rotation, flush=True)
                         print()
@@ -269,6 +276,12 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
                     elif incompleteEdges == 1 and structType != StructureType.GRASS:
                         print("can be immediate finished, finishing a", structType, flush=True)
                         card.placed_pos = emptySquarePos[1], emptySquarePos[0]
+                        if game.can_place_tile_at(card, emptySquarePos[1], emptySquarePos[0]) == False:
+                            print("card is not valid after setting position, this should not happen. placing first avaliable tile. all meeples variables reset just in case", flush=True)
+                            wantToClaim = False
+                            immediateClaim = False
+                            placingEmblem = False
+                            continue
                         lastPlaced = card._to_model()
                         lastPlacedTile = card
 
@@ -314,10 +327,17 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
 
     if optimalTile:
         optimalTile.placed_pos = optimalPos
-        print("\nplacing tile ", optimalTile.tile_type, "at ", optimalTile.placed_pos, "\n", flush=True)
-        lastPlaced = optimalTile._to_model()
-        lastPlacedTile = optimalTile
-        return game.move_place_tile(query, optimalTile._to_model(), hand.index(optimalTile))
+        if game.can_place_tile_at(optimalTile, optimalPos[1], optimalPos[0]):  # Ensure the tile is valid after setting position
+            print("\nplacing tile ", optimalTile.tile_type, "at ", optimalTile.placed_pos, flush=True)
+            print("top edge", optimalTile.internal_edges["top_edge"], "right edge", optimalTile.internal_edges["right_edge"], "bottom edge", optimalTile.internal_edges["bottom_edge"], "left edge", optimalTile.internal_edges["left_edge"],"\n", flush=True)
+            lastPlaced = optimalTile._to_model()
+            lastPlacedTile = optimalTile
+            return game.move_place_tile(query, optimalTile._to_model(), hand.index(optimalTile))
+        else:
+            print("optimal tile is not valid after setting position, this should not happen. placing first avaliable tile. all meeples variables reset just in case", flush=True)
+            wantToClaim = False
+            immediateClaim = False
+            placingEmblem = False
     
     print("no optimal tile found, placing first valid placement", flush=True)
     # Only returns here if there is no way to extend either our OWN or UNCLAIMED structures
