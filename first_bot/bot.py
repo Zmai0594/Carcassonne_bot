@@ -342,6 +342,7 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
     firstTile = hand[firstTileIndex]
     firstCoords = validPlacements[firstTileIndex][0]   #TODO double check x y order for this is correct as x y
     firstTile.placed_pos = firstCoords
+    placeholder = game.can_place_tile_at(firstTile, firstCoords[1], firstCoords[0])
     lastPlaced = firstTile._to_model()
     lastPlacedTile = firstTile
     print("placing first tile", firstTile.tile_type, "at", firstTile.placed_pos, "with rotation", firstTile.rotation, flush=True)
