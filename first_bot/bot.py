@@ -338,9 +338,17 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
     
     print("no optimal tile found, placing first valid placement", flush=True)
     # Only returns here if there is no way to extend either our OWN or UNCLAIMED structures
-    firstTileIndex = next(iter(validPlacements))
+    firstTileIter = iter(validPlacements)
+    firstTileIndex = next(firstTileIter)
     firstTile = hand[firstTileIndex]
     firstCoords = validPlacements[firstTileIndex][0]   #TODO double check x y order for this is correct as x y
+    while  not game.can_place_tile_at(firstTile, firstCoords[1], firstCoords[0]):
+        try:
+            firstTileIndex = next(firstTileIter)
+            firstTile = hand[firstTileIndex]
+            firstCoords = validPlacements[firstTileIndex][0]
+        except StopIteration:
+            print("DANGER: No valid placements found, this should not happen. placing first tile in hand", flush=True)
     firstTile.placed_pos = firstCoords
     placeholder = game.can_place_tile_at(firstTile, firstCoords[1], firstCoords[0])
     lastPlaced = firstTile._to_model()
