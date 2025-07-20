@@ -36,6 +36,7 @@ connectableBoardEdges: dict[tuple[StructureType, str], set[tuple[int, int]]] = {
 
 
 def findValidPlacements(game: Game) -> None:
+    global validPlacements
     cards = game.state.my_tiles
     grid = game.state.map._grid
 
@@ -259,7 +260,7 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
                                 claimingEdge = e
                         
                         if game.can_place_tile_at(card, emptySquarePos[1], emptySquarePos[0]) == False:
-                            print("card is not valid after setting position, this should not happen. placing first avaliable tile. all meeples variables reset just in case", flush=True)
+                            print("DANGER: card is not valid after setting position, this should not happen. placing first avaliable tile. all meeples variables reset just in case", flush=True)
                             wantToClaim = False
                             immediateClaim = False
                             placingEmblem = False
@@ -273,11 +274,11 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
 
                     # From here, everything is either already ours or unclaimed and not  in river turns
                     # Immediately place the card if we can finish a structure THAT IS OURS OR UNCLAIMED
-                    elif incompleteEdges == 1 and structType != StructureType.GRASS:
+                    elif incompleteEdges == 1 and structType != StructureType.GRASS and structType != StructureType.ROAD and structType != StructureType.ROAD_START:
                         print("can be immediate finished, finishing a", structType, flush=True)
                         card.placed_pos = emptySquarePos[1], emptySquarePos[0]
                         if game.can_place_tile_at(card, emptySquarePos[1], emptySquarePos[0]) == False:
-                            print("card is not valid after setting position, this should not happen. placing first avaliable tile. all meeples variables reset just in case", flush=True)
+                            print("DANGER: card is not valid after setting position, this should not happen. placing first avaliable tile. all meeples variables reset just in case", flush=True)
                             wantToClaim = False
                             immediateClaim = False
                             placingEmblem = False
@@ -334,16 +335,25 @@ def handle_place_tile(query: QueryPlaceTile, game: Game) -> MovePlaceTile:
             lastPlacedTile = optimalTile
             return game.move_place_tile(query, optimalTile._to_model(), hand.index(optimalTile))
         else:
-            print("optimal tile is not valid after setting position, this should not happen. placing first avaliable tile. all meeples variables reset just in case", flush=True)
+            print("DANGER: optimal tile is not valid after setting position, this should not happen. placing first avaliable tile. all meeples variables reset just in case", flush=True)
             wantToClaim = False
             immediateClaim = False
             placingEmblem = False
     
     print("no optimal tile found, placing first valid placement", flush=True)
     # Only returns here if there is no way to extend either our OWN or UNCLAIMED structures
-    firstTileIndex = next(iter(validPlacements))
+    placementsIter = iter(validPlacements)
+
+    firstTileIndex = next(placementsIter)
     firstTile = hand[firstTileIndex]
     firstCoords = validPlacements[firstTileIndex][0]   #TODO double check x y order for this is correct as x y
+    while  not game.can_place_tile_at(firstTile, firstCoords[1], firstCoords[0]):
+        try:
+            firstTileIndex = next(placementsIter)
+            firstTile = hand[firstTileIndex]
+            firstCoords = validPlacements[firstTileIndex][0]
+        except StopIteration:
+            print("DANGER: No valid placements found, this should not happen. placing first tile in hand", flush=True)
     firstTile.placed_pos = firstCoords
     lastPlaced = firstTile._to_model()
     lastPlacedTile = firstTile
@@ -522,7 +532,7 @@ def handle_place_meeple(query: QueryPlaceTile, game: Game) -> MovePlaceMeeple | 
             claimedStructures[StructureType.CITY] += 1
             print("claiming city", flush=True)
             return game.move_place_meeple(query, lastPlaced, claimingEdge)
-        elif structure == StructureType.ROAD and claimedStructures[StructureType.ROAD] < MAXCLAIMEDROADS:
+        elif (structure == StructureType.ROAD or structure == StructureType.ROAD_START) and claimedStructures[StructureType.ROAD] < MAXCLAIMEDROADS:
             claimedStructures[StructureType.ROAD] += 1
             print("claiming road", flush=True)
             return game.move_place_meeple(query, lastPlaced, claimingEdge)
