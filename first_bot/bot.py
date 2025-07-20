@@ -528,7 +528,7 @@ def handle_place_meeple(query: QueryPlaceTile, game: Game) -> MovePlaceMeeple | 
             claimedStructures[StructureType.CITY] += 1
             print("claiming city", flush=True)
             return game.move_place_meeple(query, lastPlaced, claimingEdge)
-        elif structure == StructureType.ROAD and claimedStructures[StructureType.ROAD] < MAXCLAIMEDROADS:
+        elif (structure == StructureType.ROAD or structure == StructureType.ROAD_START) and claimedStructures[StructureType.ROAD] < MAXCLAIMEDROADS:
             claimedStructures[StructureType.ROAD] += 1
             print("claiming road", flush=True)
             return game.move_place_meeple(query, lastPlaced, claimingEdge)
